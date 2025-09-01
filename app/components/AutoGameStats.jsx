@@ -1,12 +1,15 @@
 "use client";
-import { useState } from "react";
 
-export default function AutoGameStats() {
-  const [afterWin, setAfterWin] = useState(0);
-  const [afterLoss, setAfterLoss] = useState(0);
-  const [stopOnWin, setStopOnWin] = useState(false);
-  const [stopOnLoss, setStopOnLoss] = useState(false);
-
+export default function AutoGameStats({
+  afterWin,
+  setAfterWin,
+  afterLoss,
+  setAfterLoss,
+  stopOnWin,
+  setStopOnWin,
+  stopOnLoss,
+  setStopOnLoss,
+}) {
   const adjust = (setter, dir) => setter((p) => p + dir * 5);
 
   return (
