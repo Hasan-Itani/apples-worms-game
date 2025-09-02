@@ -1,5 +1,6 @@
 import { useBoxesGame } from "../hooks/useBoxesGame";
 import Jackpot from "./JackpotBar";
+import Image from "next/image";
 
 export default function Boxes({ gridSize, worms, bet }) {
   const { grid, handleClick } = useBoxesGame(gridSize, worms);
@@ -23,10 +24,35 @@ export default function Boxes({ gridSize, worms, bet }) {
           <div
             key={index}
             onClick={() => handleClick(index)}
-            className={`flex items-center justify-center border-2 border-gray-700 rounded-lg text-3xl cursor-pointer transition
-              ${cell === "❓" ? "bg-gray-300 hover:bg-gray-400" : "bg-white"}`}
+            className="relative flex items-center justify-center cursor-pointer"
           >
-            {cell}
+            <Image
+              src="/box.png"
+              alt="Box"
+              fill
+              className="object-contain select-none pointer-events-none"
+            />
+
+            {cell !== "❓" && (
+              <div className="absolute w-3/4 h-3/4">
+                {cell === "🍎" && (
+                  <Image
+                    src="/apple.png"
+                    alt="Apple"
+                    fill
+                    className="object-contain"
+                  />
+                )}
+                {cell === "💣" && (
+                  <Image
+                    src="/worm.png"
+                    alt="Worm"
+                    fill
+                    className="object-contain"
+                  />
+                )}
+              </div>
+            )}
           </div>
         ))}
       </div>
