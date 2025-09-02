@@ -121,7 +121,7 @@ export default function HomePage() {
           </div>
         </div>
         <div className="">
-          <Boxes gridSize={game.gridSize} worms={game.worms} />
+          <Boxes gridSize={game.gridSize} worms={game.worms} bet={game.bet}/>
         </div>
       </div>
     </div>

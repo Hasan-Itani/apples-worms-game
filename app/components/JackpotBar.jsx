@@ -1,11 +1,11 @@
 "use client";
 
-export default function Jackpot({ gridSize = 4, worms = 2, bet = 5 }) {
+export default function Jackpot({ gridSize, worms, bet }) {
   const totalBoxes = gridSize * gridSize;
-  const apples = totalBoxes - worms;
+  const apples = Math.max(totalBoxes - worms, 0); // prevent negative
 
   const jackpotValues = Array.from({ length: apples }, (_, i) => {
-    return `€${(bet * (i + 2)).toFixed(2)}`;
+    return `€${(bet * (i + 1)).toFixed(2)}`; // dynamic scaling
   });
 
   const balanceValues = Array.from({ length: apples }, () => "€0.00");
