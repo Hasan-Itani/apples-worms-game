@@ -171,12 +171,21 @@ export default function BetControls({
 
       {/* Actions */}
       {mode === "manual" ? (
-        <button
-          onClick={startGame}
-          className="w-full py-2 mt-2 bg-green-500 text-white rounded hover:bg-green-600"
-        >
-          Bank It
-        </button>
+        <div className="mt-2 space-y-2">
+          <div className="flex items-center justify-between">
+            <button
+              className="px-2 py-1 bg-gray-200 rounded hover:bg-gray-300"
+            >
+              -
+            </button>
+            <span className="font-bold">Bank It 2.34$</span>
+            <button
+              className="px-2 py-1 bg-gray-200 rounded hover:bg-gray-300"
+            >
+              +
+            </button>
+          </div>
+        </div>
       ) : (
         <div className="mt-2 space-y-2">
           <div className="flex items-center justify-between">

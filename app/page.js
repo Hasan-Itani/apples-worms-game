@@ -42,18 +42,28 @@ export default function HomePage() {
 
             {/* Manual Mode Start/Stop */}
             {game.mode === "manual" && (
-              <button
-                onClick={
-                  game.manualRunning ? game.stopManualGame : game.startGame
-                }
-                className={`w-full py-2 ${
-                  game.manualRunning
-                    ? "bg-red-500 hover:bg-red-600"
-                    : "bg-blue-500 hover:bg-blue-600"
-                } text-white rounded`}
-              >
-                {game.manualRunning ? "Stop Game" : "Start Game"}
-              </button>
+              <div className="w-full">
+                {!game.manualRunning ? (
+                  <button
+                    onClick={game.startGame}
+                    className="w-full py-2 px-4 bg-blue-500 hover:bg-blue-600 text-white rounded"
+                  >
+                    Start Game
+                  </button>
+                ) : (
+                  <div className="flex justify-between gap-2">
+                    <button
+                      onClick={game.stopManualGame}
+                      className="flex-1 bg-yellow-500 hover:bg-yellow-600 py-2 rounded text-white"
+                    >
+                      Collect 5.45$
+                    </button>
+                    <button className="flex-1 bg-green-500 hover:bg-green-600 py-2 rounded text-white">
+                      Bank It
+                    </button>
+                  </div>
+                )}
+              </div>
             )}
 
             {/* Auto Mode Start/Stop */}
