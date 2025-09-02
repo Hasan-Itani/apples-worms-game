@@ -40,15 +40,29 @@ export default function HomePage() {
               />
             )}
 
-            {/* Start / Stop Buttons */}
-            {!game.gameActive && (
+            {/* Manual Mode Start/Stop */}
+            {game.mode === "manual" && (
               <button
                 onClick={
-                  game.mode === "manual" ? game.startGame : game.startAutoPlay
+                  game.manualRunning ? game.stopManualGame : game.startGame
                 }
+                className={`w-full py-2 ${
+                  game.manualRunning
+                    ? "bg-red-500 hover:bg-red-600"
+                    : "bg-blue-500 hover:bg-blue-600"
+                } text-white rounded`}
+              >
+                {game.manualRunning ? "Stop Game" : "Start Game"}
+              </button>
+            )}
+
+            {/* Auto Mode Start/Stop */}
+            {game.mode === "auto" && !game.gameActive && (
+              <button
+                onClick={game.startAutoPlay}
                 className="w-full py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
               >
-                {game.mode === "manual" ? "Start Game" : "Start Auto Play"}
+                Start Auto Play
               </button>
             )}
             {game.mode === "auto" && game.gameActive && (
@@ -58,18 +72,6 @@ export default function HomePage() {
               >
                 Stop Auto
               </button>
-            )}
-
-            {/* Manual Running Panel */}
-            {game.mode === "manual" && game.manualRunning && (
-              <div className="p-2 bg-gray-100 rounded space-y-2">
-                <button
-                  onClick={game.stopManualGame}
-                  className="px-3 py-1 bg-green-500 text-white rounded"
-                >
-                  Stop Game
-                </button>
-              </div>
             )}
 
             {/* Bet & Controls */}
@@ -102,7 +104,7 @@ export default function HomePage() {
           </div>
         </div>
         <div className="bg-red-400">
-          <Boxes />
+          <Boxes gridSize={game.gridSize} />
         </div>
       </div>
     </div>
