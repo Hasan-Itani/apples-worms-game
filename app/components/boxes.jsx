@@ -1,42 +1,8 @@
 "use client";
-import { useState } from "react";
+import { useBoxesGame } from "../hooks/useBoxesGame";
 
-export default function Boxes() {
-  const generateBombs = (count = 2) => {
-    const positions = new Set();
-    while (positions.size < count) {
-      positions.add(Math.floor(Math.random() * 16));
-    }
-    return [...positions];
-  };
-
-  const [grid, setGrid] = useState(Array(16).fill("❓"));
-  const [bombs, setBombs] = useState(generateBombs);
-  const [score, setScore] = useState(0);
-
-  const resetGame = () => {
-    setGrid(Array(16).fill("❓"));
-    setBombs(generateBombs());
-    setScore(0);
-  };
-
-  const handleClick = (index) => {
-    if (grid[index] !== "❓") return;
-
-    const newGrid = [...grid];
-    if (bombs.includes(index)) {
-      newGrid[index] = "💣";
-      setGrid(newGrid);
-      setTimeout(() => {
-        alert(`game over, lets try again (should be modal): ${score} 🍎`);
-        resetGame();
-      }, 300);
-    } else {
-      newGrid[index] = "🍎";
-      setGrid(newGrid);
-      setScore((prev) => prev + 1);
-    }
-  };
+export default function Boxes({ gridSize = 4, worms = 2 }) {
+  const { grid, handleClick } = useBoxesGame(gridSize, worms);
 
   return (
     <div className="flex flex-col items-center gap-6 align-center">
@@ -71,12 +37,19 @@ export default function Boxes() {
         </div>
       </div>
 
-      <div className="grid grid-cols-4 gap-x-5 gap-y-5 w-[320px] w-max">
+      <div
+        className="grid gap-2"
+        style={{
+          gridTemplateColumns: `repeat(${gridSize}, 1fr)`,
+          width: "400px",
+          height: "400px",
+        }}
+      >
         {grid.map((cell, index) => (
           <div
             key={index}
             onClick={() => handleClick(index)}
-            className={`w-24 h-24 flex items-center justify-center border-2 border-gray-700 rounded-lg text-3xl cursor-pointer transition
+            className={`flex items-center justify-center border-2 border-gray-700 rounded-lg text-3xl cursor-pointer transition
               ${cell === "❓" ? "bg-gray-300 hover:bg-gray-400" : "bg-white"}`}
           >
             {cell}
