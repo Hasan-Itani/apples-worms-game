@@ -4,18 +4,25 @@ import GameStats from "./components/GameStats";
 import AutoGameStats from "./components/AutoGameStats";
 import BetControls from "./components/BetControls";
 import Boxes from "./components/Boxes";
+import Image from "next/image";
 
 export default function HomePage() {
   const game = useGameLogic();
 
   return (
-    <div className="w-screen h-screen">
-      <div className="grid grid-cols-2 w-screen h-screen">
-        <div className="bg-green-400 text-center text-black">
+    <div className="w-screen min-h-screen bg-[url(/landscape_background.jpg)] bg-no-repeat bg-cover bg-center">
+      <div className="grid grid-cols-2 w-full h-full">
+        <div className="text-center text-black">
+          <Image 
+              src={"/logo.png"}
+              alt="Logo"
+              width={500}
+              height={230}
+              className="mx-auto mt-10"
+            
+            />
           <div className="max-w-md mx-auto p-6 space-y-6">
-            <h1 className="text-2xl font-bold text-center">
-              🍏 Apples & Worms 🪱
-            </h1>
+            
 
             {/* Stats */}
             {game.mode === "manual" && (
@@ -103,7 +110,7 @@ export default function HomePage() {
             />
           </div>
         </div>
-        <div className="bg-red-400">
+        <div className="">
           <Boxes gridSize={game.gridSize} worms={game.worms} />
         </div>
       </div>
