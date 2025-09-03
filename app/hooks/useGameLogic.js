@@ -16,7 +16,6 @@ export function useGameLogic() {
   const [rounds, setRounds] = useState(10);
   const [roundKey, setRoundKey] = useState(0);
 
-  // оборачиваем resetGame из boxesHook
   const resetGameAndBumpKey = () => {
     boxesHook.resetGame();
     setRoundKey((k) => k + 1);
@@ -34,6 +33,6 @@ export function useGameLogic() {
     setRounds,
     roundSteps: [5, 10, 15, 20, 30, 40, 50, 100],
     roundKey,
-    resetGame: resetGameAndBumpKey, // подменяем resetGame
+    resetGame: resetGameAndBumpKey,
   };
 }
