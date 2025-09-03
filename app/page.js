@@ -58,8 +58,7 @@ export default function HomePage() {
                   <div className="flex justify-between gap-2">
                     <button
                       onClick={() => {
-                        game.collectApples(); // hide collected apples
-                        game.stopManualGame();  // stop the current round
+                        game.stopManualGame();
                         game.resetGame();
 
                       }}
@@ -105,6 +104,7 @@ export default function HomePage() {
               minWorms={game.minWorms}
               maxWorms={game.maxWorms}
               startGame={game.startGame}
+              stopManualGame={game.stopManualGame}
               mode={game.mode}
               setMode={game.setMode}
               rounds={game.rounds}
@@ -124,11 +124,13 @@ export default function HomePage() {
         </div>
         <div className="">
           <Boxes
+            key={game.roundKey}
+            grid={game.grid}
+            handleClick={game.handleClick}
             gridSize={game.gridSize}
             worms={game.worms}
             bet={game.bet}
-            manualRunning={game.manualRunning} // ✅ sent here
-            stopManualGame={game.stopManualGame} // ✅ sent here
+            manualRunning={game.manualRunning}
           />
         </div>
       </div>

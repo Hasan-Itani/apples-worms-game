@@ -3,19 +3,14 @@ import Jackpot from "./JackpotBar";
 import Image from "next/image";
 
 export default function Boxes({
+  grid,
+  handleClick,
   gridSize,
   worms,
   bet,
   manualRunning,
-  stopManualGame,
 }) {
-  const { grid, handleClick } = useBoxesGame(
-    gridSize,
-    worms,
-    manualRunning,
-    stopManualGame
-  );
-
+  console.log("GRID:", grid);
   return (
     <div className="flex flex-col items-center gap-6 align-center">
       <Jackpot gridSize={gridSize} worms={worms} bet={bet} />
