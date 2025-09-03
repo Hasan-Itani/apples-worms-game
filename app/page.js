@@ -10,7 +10,7 @@ export default function HomePage() {
   const game = useGameLogic();
 
   return (
-    <div className="w-screen min-h-screen bg-[url(/landscape_background.jpg)] bg-no-repeat bg-cover bg-center">
+    <div className="min-h-screen bg-[url(/landscape_background.jpg)] bg-no-repeat bg-cover bg-center">
       <div className="grid grid-cols-2 w-full h-full">
         <div className="text-center text-black">
           <Image 
