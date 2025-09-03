@@ -42,32 +42,26 @@ export default function HomePage() {
             )}
             {game.mode === "manual" && (
               <div className="w-full">
-                
                 {!game.manualRunning ? (
                   <button
                     onClick={game.startGame}
                     className="w-full py-2 px-4 bg-blue-500 hover:bg-blue-600 text-white rounded"
                   >
-                    
                     Start Game
                   </button>
                 ) : (
                   <div className="flex justify-between gap-2">
-                    
                     <button
                       onClick={() => {
-                        game.collectApples();
-                        // hide collected apples
-                        game.stopManualGame();
-                        // stop the current round
+                        game.collectApples(); // ✅ clears apples visually
+                        game.stopManualGame(); // ✅ ends round
                       }}
                       className="flex-1 bg-yellow-500 hover:bg-yellow-600 py-2 rounded text-white"
                     >
-                      
                       Collect {game.score}$
                     </button>
+
                     <button className="flex-1 bg-green-500 hover:bg-green-600 py-2 rounded text-white">
-                      
                       Bank It
                     </button>
                   </div>
@@ -80,7 +74,6 @@ export default function HomePage() {
                 onClick={game.startAutoPlay}
                 className="w-full py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
               >
-                
                 Start Auto Play
               </button>
             )}
@@ -89,7 +82,6 @@ export default function HomePage() {
                 onClick={game.stopAutoPlay}
                 className="w-full py-2 bg-red-500 text-white rounded hover:bg-red-600"
               >
-                
                 Stop Auto
               </button>
             )}
@@ -124,10 +116,12 @@ export default function HomePage() {
         </div>
         <div className="">
           <Boxes
+            grid={game.grid}
+            handleClick={game.handleClick}
             gridSize={game.gridSize}
             worms={game.worms}
             bet={game.bet}
-            manualRunning={game.manualRunning} // ✅ sent here
+            manualRunning={game.manualRunning}
             stopManualGame={game.stopManualGame}
           />
         </div>

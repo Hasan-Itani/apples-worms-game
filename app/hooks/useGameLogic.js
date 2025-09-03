@@ -13,7 +13,13 @@ export function useGameLogic() {
     balanceHook.setBalance,
     balanceHook.bet
   );
-  const boxesHook = useBoxesGame();
+  const boxesHook = useBoxesGame(
+    gridHook.gridSize,
+    gridHook.worms,
+    manualHook.manualRunning,
+    manualHook.stopManualGame
+  );
+
   const autoHook = useAutoGame(balanceHook.balance, balanceHook.bet);
 
   const [mode, setMode] = useState("manual");

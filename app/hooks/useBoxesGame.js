@@ -50,5 +50,5 @@ export function useBoxesGame(
       setScore((prev) => prev + 1);
     }
   };
-  return { grid, score, handleClick, resetGame, collectApples };
+return { grid, score, handleClick, resetGame, collectApples };
 }
