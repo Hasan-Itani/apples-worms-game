@@ -1,7 +1,12 @@
 "use client";
 import { useState, useEffect } from "react";
 
-export function useBoxesGame(gridSize = 4, worms = 2) {
+export function useBoxesGame(
+  gridSize = 4,
+  worms = 2,
+  manualRunning = false,
+  stopManualGame = () => {}
+) {
   const totalBoxes = gridSize * gridSize;
 
   const generateBombs = (count = 2) => {
@@ -16,7 +21,6 @@ export function useBoxesGame(gridSize = 4, worms = 2) {
   const [bombs, setBombs] = useState(generateBombs(worms));
   const [score, setScore] = useState(0);
 
-  // reset when gridSize or worms changes
   useEffect(() => {
     setGrid(Array(totalBoxes).fill("❓"));
     setBombs(generateBombs(worms));
@@ -28,8 +32,14 @@ export function useBoxesGame(gridSize = 4, worms = 2) {
     setBombs(generateBombs(worms));
     setScore(0);
   };
+  const collectApples = () => {
+    const newGrid = grid.map((cell) => (cell === "🍎" ? "❓" : cell));
+    setGrid(newGrid);
+    setScore(0); // reset score after collecting
+  };
 
   const handleClick = (index) => {
+    if (!manualRunning) return; // prevent clicking unless game started
     if (grid[index] !== "❓") return;
 
     const newGrid = [...grid];
@@ -37,9 +47,10 @@ export function useBoxesGame(gridSize = 4, worms = 2) {
       newGrid[index] = "💣";
       setGrid(newGrid);
       setTimeout(() => {
-        alert(`game over, lets try again (should be modal): ${score} 🍎`);
+        alert(`💀 Worm! Game Over. You collected ${score} 🍎`);
+        stopManualGame(); // stop game instantly
         resetGame();
-      }, 300);
+      }, 200);
     } else {
       newGrid[index] = "🍎";
       setGrid(newGrid);
@@ -47,10 +58,5 @@ export function useBoxesGame(gridSize = 4, worms = 2) {
     }
   };
 
-  return {
-    grid,
-    score,
-    handleClick,
-    resetGame,
-  };
+  return { grid, score, handleClick, resetGame, collectApples };
 }

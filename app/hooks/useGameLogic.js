@@ -5,6 +5,7 @@ import { useGrid } from "./useGrid";
 import { useManualGame } from "./useManualGame";
 import { useAutoGame } from "./useAutoGame";
 import { useState } from "react";
+import { useBoxesGame } from "./useBoxesGame";
 
 export function useGameLogic() {
   // --- Core hooks ---
@@ -15,6 +16,7 @@ export function useGameLogic() {
     balanceHook.setBalance,
     balanceHook.bet
   );
+  const boxesHook = useBoxesGame();
   const autoHook = useAutoGame(balanceHook.balance, balanceHook.bet);
 
   const [mode, setMode] = useState("manual");
@@ -38,5 +40,8 @@ export function useGameLogic() {
 
     // --- Auto ---
     ...autoHook,
+
+    // --- Boxes ---
+    ...boxesHook,
   };
 }

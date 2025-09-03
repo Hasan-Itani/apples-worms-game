@@ -2,14 +2,22 @@ import { useBoxesGame } from "../hooks/useBoxesGame";
 import Jackpot from "./JackpotBar";
 import Image from "next/image";
 
-export default function Boxes({ gridSize, worms, bet }) {
-  const { grid, handleClick } = useBoxesGame(gridSize, worms);
-  const totalBoxes = gridSize * gridSize;
-  const apples = totalBoxes - worms;
+export default function Boxes({
+  gridSize,
+  worms,
+  bet,
+  manualRunning,
+  stopManualGame,
+}) {
+  const { grid, handleClick } = useBoxesGame(
+    gridSize,
+    worms,
+    manualRunning,
+    stopManualGame
+  );
 
   return (
     <div className="flex flex-col items-center gap-6 align-center">
-      {/* Send dynamic values */}
       <Jackpot gridSize={gridSize} worms={worms} bet={bet} />
 
       <div
@@ -24,7 +32,9 @@ export default function Boxes({ gridSize, worms, bet }) {
           <div
             key={index}
             onClick={() => handleClick(index)}
-            className="relative flex items-center justify-center cursor-pointer"
+            className={`relative flex items-center justify-center cursor-pointer ${
+              !manualRunning ? "pointer-events-none opacity-60" : ""
+            }`}
           >
             <Image
               src="/box.png"
@@ -32,7 +42,6 @@ export default function Boxes({ gridSize, worms, bet }) {
               fill
               className="object-contain select-none pointer-events-none"
             />
-
             {cell !== "❓" && (
               <div className="absolute w-3/4 h-3/4">
                 {cell === "🍎" && (

@@ -13,17 +13,14 @@ export default function HomePage() {
     <div className="min-h-screen bg-[url(/landscape_background.jpg)] bg-no-repeat bg-cover bg-center">
       <div className="grid grid-cols-2 w-full h-full">
         <div className="text-center text-black">
-          <Image 
-              src={"/logo.png"}
-              alt="Logo"
-              width={500}
-              height={230}
-              className="mx-auto mt-10"
-            
-            />
+          <Image
+            src={"/logo.png"}
+            alt="Logo"
+            width={500}
+            height={230}
+            className="mx-auto mt-10"
+          />
           <div className="max-w-md mx-auto p-6 space-y-6">
-            
-
             {/* Stats */}
             {game.mode === "manual" && (
               <GameStats
@@ -60,10 +57,15 @@ export default function HomePage() {
                 ) : (
                   <div className="flex justify-between gap-2">
                     <button
-                      onClick={game.stopManualGame}
+                      onClick={() => {
+                        game.collectApples(); // hide collected apples
+                        game.stopManualGame();  // stop the current round
+                        game.resetGame();
+
+                      }}
                       className="flex-1 bg-yellow-500 hover:bg-yellow-600 py-2 rounded text-white"
                     >
-                      Collect 5.45$
+                      Collect {game.score}$
                     </button>
                     <button className="flex-1 bg-green-500 hover:bg-green-600 py-2 rounded text-white">
                       Bank It
@@ -121,7 +123,13 @@ export default function HomePage() {
           </div>
         </div>
         <div className="">
-          <Boxes gridSize={game.gridSize} worms={game.worms} bet={game.bet}/>
+          <Boxes
+            gridSize={game.gridSize}
+            worms={game.worms}
+            bet={game.bet}
+            manualRunning={game.manualRunning} // ✅ sent here
+            stopManualGame={game.stopManualGame} // ✅ sent here
+          />
         </div>
       </div>
     </div>
