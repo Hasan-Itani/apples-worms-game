@@ -5,10 +5,8 @@ import AutoGameStats from "./components/AutoGameStats";
 import BetControls from "./components/BetControls";
 import Boxes from "./components/Boxes";
 import Image from "next/image";
-
 export default function HomePage() {
   const game = useGameLogic();
-
   return (
     <div className="min-h-screen bg-[url(/landscape_background.jpg)] bg-no-repeat bg-cover bg-center">
       <div className="grid grid-cols-2 w-full h-full">
@@ -21,7 +19,6 @@ export default function HomePage() {
             className="mx-auto mt-10"
           />
           <div className="max-w-md mx-auto p-6 space-y-6">
-            {/* Stats */}
             {game.mode === "manual" && (
               <GameStats
                 applesRemaining={game.applesRemaining}
@@ -43,43 +40,47 @@ export default function HomePage() {
                 setStopOnLoss={game.setStopOnLoss}
               />
             )}
-
-            {/* Manual Mode Start/Stop */}
             {game.mode === "manual" && (
               <div className="w-full">
+                
                 {!game.manualRunning ? (
                   <button
                     onClick={game.startGame}
                     className="w-full py-2 px-4 bg-blue-500 hover:bg-blue-600 text-white rounded"
                   >
+                    
                     Start Game
                   </button>
                 ) : (
                   <div className="flex justify-between gap-2">
+                    
                     <button
                       onClick={() => {
+                        game.collectApples();
+                        // hide collected apples
                         game.stopManualGame();
-                        game.resetGame();
-
+                        // stop the current round
                       }}
                       className="flex-1 bg-yellow-500 hover:bg-yellow-600 py-2 rounded text-white"
                     >
+                      
                       Collect {game.score}$
                     </button>
                     <button className="flex-1 bg-green-500 hover:bg-green-600 py-2 rounded text-white">
+                      
                       Bank It
                     </button>
                   </div>
                 )}
               </div>
             )}
-
             {/* Auto Mode Start/Stop */}
             {game.mode === "auto" && !game.gameActive && (
               <button
                 onClick={game.startAutoPlay}
                 className="w-full py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
               >
+                
                 Start Auto Play
               </button>
             )}
@@ -88,10 +89,10 @@ export default function HomePage() {
                 onClick={game.stopAutoPlay}
                 className="w-full py-2 bg-red-500 text-white rounded hover:bg-red-600"
               >
+                
                 Stop Auto
               </button>
             )}
-
             {/* Bet & Controls */}
             <BetControls
               bet={game.bet}
@@ -104,7 +105,6 @@ export default function HomePage() {
               minWorms={game.minWorms}
               maxWorms={game.maxWorms}
               startGame={game.startGame}
-              stopManualGame={game.stopManualGame}
               mode={game.mode}
               setMode={game.setMode}
               rounds={game.rounds}
@@ -124,13 +124,11 @@ export default function HomePage() {
         </div>
         <div className="">
           <Boxes
-            key={game.roundKey}
-            grid={game.grid}
-            handleClick={game.handleClick}
             gridSize={game.gridSize}
             worms={game.worms}
             bet={game.bet}
-            manualRunning={game.manualRunning}
+            manualRunning={game.manualRunning} // ✅ sent here
+            stopManualGame={game.stopManualGame}
           />
         </div>
       </div>
