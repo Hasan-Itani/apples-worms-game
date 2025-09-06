@@ -1,5 +1,5 @@
 "use client";
-import { useRef } from "react";
+import { useRef, useState, useEffect } from "react";
 
 export default function BetControls({
   bet,
@@ -11,25 +11,33 @@ export default function BetControls({
   maxWorms,
   gridSize,
   setGridSizeClamped,
-  startGame,
   mode,
   setMode,
   rounds,
   setRounds,
   roundSteps,
+  openedApples,
+  disabled = false,
+  bankValue,
+  setBankValue,
+  availableBankOptions = [],
+  maxWin,
 }) {
   const betSteps = [
     0.1, 0.2, 0.3, 0.4, 0.5, 1, 1.5, 2, 2.5, 3, 4, 5, 10, 15, 20, 30, 50, 100,
     150, 200, 300, 400, 500,
   ];
+
   const intervalRef = useRef(null);
   const startHold = (action) => {
+    if (disabled) return;
     action();
     intervalRef.current = setInterval(action, 120);
   };
   const stopHold = () => {
     if (intervalRef.current) clearInterval(intervalRef.current);
   };
+
   const nearestStepIndex = (arr, value) => {
     let bestI = 0,
       bestDiff = Infinity;
@@ -42,6 +50,7 @@ export default function BetControls({
     });
     return bestI;
   };
+
   const stepBet = (dir) =>
     setBet(
       (prev) =>
@@ -55,6 +64,7 @@ export default function BetControls({
           )
         ]
     );
+
   const stepRounds = (dir) =>
     setRounds(
       (prev) =>
@@ -68,6 +78,36 @@ export default function BetControls({
           )
         ]
     );
+
+  const [bankIndex, setBankIndex] = useState(0);
+
+  useEffect(() => {
+    if (openedApples === 0) {
+      if (bankIndex !== 0) setBankIndex(0);
+      if (bankValue !== 0) setBankValue(0);
+      return;
+    }
+    if (availableBankOptions.length === 0) {
+      if (bankValue !== 0) setBankValue(0);
+      return;
+    }
+    const clamped = Math.min(bankIndex, availableBankOptions.length - 1);
+    if (clamped !== bankIndex) setBankIndex(clamped);
+    const nextVal = availableBankOptions[clamped];
+    if (bankValue !== nextVal) setBankValue(nextVal);
+  }, [openedApples, availableBankOptions, bankIndex, bankValue, setBankValue]);
+
+  const selectBank = (i) => {
+    const clamped = Math.max(0, Math.min(i, availableBankOptions.length - 1));
+    setBankIndex(clamped);
+    setBankValue(availableBankOptions[clamped] || 0);
+  };
+
+  const canIncrement = bankIndex < Math.max(0, availableBankOptions.length - 1);
+  const canDecrement = bankIndex > 0;
+
+  const buttonClass =
+    "w-10 h-10 flex items-center justify-center rounded-lg bg-slate-300 hover:bg-slate-400 active:scale-95 transition disabled:opacity-50 disabled:cursor-not-allowed";
 
   return (
     <div className="p-5 bg-gradient-to-b from-slate-100 to-slate-200 rounded-2xl shadow-xl border border-slate-300 w-full max-w-3xl">
@@ -84,7 +124,8 @@ export default function BetControls({
                 onPointerDown={() => startHold(() => stepBet(-1))}
                 onPointerUp={stopHold}
                 onPointerLeave={stopHold}
-                className="w-10 h-10 flex items-center justify-center rounded-lg bg-slate-300 hover:bg-slate-400 active:scale-95 transition"
+                disabled={disabled}
+                className={buttonClass}
               >
                 −
               </button>
@@ -95,7 +136,8 @@ export default function BetControls({
                 onPointerDown={() => startHold(() => stepBet(1))}
                 onPointerUp={stopHold}
                 onPointerLeave={stopHold}
-                className="w-10 h-10 flex items-center justify-center rounded-lg bg-slate-300 hover:bg-slate-400 active:scale-95 transition"
+                disabled={disabled}
+                className={buttonClass}
               >
                 +
               </button>
@@ -114,7 +156,8 @@ export default function BetControls({
                 }
                 onPointerUp={stopHold}
                 onPointerLeave={stopHold}
-                className="w-10 h-10 flex items-center justify-center rounded-lg bg-slate-300 hover:bg-slate-400 active:scale-95 transition"
+                disabled={disabled}
+                className={buttonClass}
               >
                 −
               </button>
@@ -129,37 +172,52 @@ export default function BetControls({
                 }
                 onPointerUp={stopHold}
                 onPointerLeave={stopHold}
-                className="w-10 h-10 flex items-center justify-center rounded-lg bg-slate-300 hover:bg-slate-400 active:scale-95 transition"
+                disabled={disabled}
+                className={buttonClass}
               >
                 +
               </button>
             </div>
           </div>
 
-          {/* Balance + Max Win */}
+          {/* Balance */}
           <div>
             <h3 className="text-sm text-gray-600 font-medium mb-1">Balance</h3>
-            <div className="text-xl font-bold text-slate-800">{balance}</div>
-            <div className="text-xs text-gray-500 mt-1">Max Win: €1,440.00</div>
+            <div className="text-xl font-bold text-slate-800">
+              {balance.toFixed(2)}
+            </div>
+            <div className="text-xs text-gray-500 mt-1">
+              Max Win: €{maxWin.toFixed(2)}
+            </div>
           </div>
         </div>
 
         {/* RIGHT SIDE */}
         <div className="flex flex-col gap-6 flex-1">
-          {/* Actions - manual vs auto */}
+          {/* Bank It */}
           {mode === "manual" ? (
             <div>
               <h3 className="text-sm text-gray-600 font-medium mb-1">
                 Bank It
               </h3>
-              <div className="flex items-center gap-3 ">
-                <button className="w-10 h-10 flex items-center justify-center rounded-lg bg-slate-300 hover:bg-slate-400 active:scale-95 transition">
+              <div className="flex items-center gap-3">
+                <button
+                  disabled={!canDecrement || openedApples === 0}
+                  onClick={() => selectBank(bankIndex - 1)}
+                  className={buttonClass}
+                >
                   −
                 </button>
                 <div className="flex-1 text-center text-lg font-bold bg-white rounded-lg py-2 shadow-inner">
-                  2.34$
+                  {availableBankOptions.length > 0
+                    ? availableBankOptions[bankIndex]
+                    : "0.00"}
                 </div>
-                <button className="w-10 h-10 flex items-center justify-center rounded-lg bg-slate-300 hover:bg-slate-400 active:scale-95 transition">
+                <button
+                  disabled={!canIncrement || openedApples === 0}
+                  onClick={() => selectBank(bankIndex + 1)}
+                  className={buttonClass}
+                >
                   +
                 </button>
               </div>
@@ -177,7 +235,7 @@ export default function BetControls({
                   −
                 </button>
                 <div className="flex-1 text-center text-lg font-bold bg-white rounded-lg py-2 shadow-inner">
-                  {rounds} 
+                  {rounds}
                 </div>
                 <button
                   onClick={() => stepRounds(1)}
@@ -195,6 +253,7 @@ export default function BetControls({
             <div className="flex gap-2">
               <button
                 onClick={() => setMode("manual")}
+                disabled={disabled}
                 className={`flex-1 py-2 rounded-lg font-medium transition ${
                   mode === "manual"
                     ? "bg-blue-500 text-white shadow"
@@ -205,6 +264,7 @@ export default function BetControls({
               </button>
               <button
                 onClick={() => setMode("auto")}
+                disabled={disabled}
                 className={`flex-1 py-2 rounded-lg font-medium transition ${
                   mode === "auto"
                     ? "bg-blue-500 text-white shadow"
@@ -226,6 +286,7 @@ export default function BetControls({
                 <button
                   key={size}
                   onClick={() => setGridSizeClamped(size)}
+                  disabled={disabled}
                   className={`flex-1 py-2 rounded-lg font-medium border transition ${
                     gridSize === size
                       ? "bg-green-500 text-white border-green-600 shadow"

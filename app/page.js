@@ -5,8 +5,10 @@ import AutoGameStats from "./components/AutoGameStats";
 import BetControls from "./components/BetControls";
 import Boxes from "./components/Boxes";
 import Image from "next/image";
+
 export default function HomePage() {
   const game = useGameLogic();
+
   return (
     <div className="min-h-screen bg-[url(/landscape_background.jpg)] bg-no-repeat bg-cover bg-center">
       <div className="grid grid-cols-2 w-full h-full">
@@ -21,13 +23,33 @@ export default function HomePage() {
           <div className="max-w-md mx-auto p-6 space-y-6">
             {game.mode === "manual" && (
               <GameStats
-                applesRemaining={game.applesRemaining}
-                chanceOfWorm={game.chanceOfWorm}
-                chanceOfApple={game.chanceOfApple}
-                openedTiles={game.openedTiles}
+                applesRemaining={
+                  game.totalBoxes - game.worms - game.openedApples
+                } 
+                chanceOfApple={
+                  game.openedApples < game.totalBoxes
+                    ? Math.round(
+                        ((game.totalBoxes - game.worms - game.openedApples) /
+                          (game.totalBoxes - game.openedApples)) *
+                          100
+                      )
+                    : 0
+                }
+                chanceOfWorm={
+                  game.openedApples < game.totalBoxes
+                    ? 100 -
+                      Math.round(
+                        ((game.totalBoxes - game.worms - game.openedApples) /
+                          (game.totalBoxes - game.openedApples)) *
+                          100
+                      )
+                    : 0
+                }
+                openedTiles={game.openedApples}
                 totalBoxes={game.totalBoxes}
               />
             )}
+
             {game.mode === "auto" && (
               <AutoGameStats
                 afterWin={game.afterWin}
@@ -52,16 +74,26 @@ export default function HomePage() {
                 ) : (
                   <div className="flex justify-between gap-2">
                     <button
-                      onClick={() => {
-                        game.collectApples(); // ✅ clears apples visually
-                        game.stopManualGame(); // ✅ ends round
-                      }}
-                      className="flex-1 bg-yellow-500 hover:bg-yellow-600 py-2 rounded text-white"
+                      onClick={game.collectApples}
+                      disabled={game.openedApples === 0} 
+                      className={`flex-1 py-2 rounded text-white ${
+                        game.openedApples === 0
+                          ? "bg-yellow-300 cursor-not-allowed"
+                          : "bg-yellow-500 hover:bg-yellow-600"
+                      }`}
                     >
-                      Collect {game.score}$
+                      Collect: {game.collectAmount.toFixed(2)}
                     </button>
 
-                    <button className="flex-1 bg-green-500 hover:bg-green-600 py-2 rounded text-white">
+                    <button
+                      onClick={() => game.bankIt(game.bankValue)} 
+                      disabled={game.openedApples === 0} 
+                      className={`flex-1 py-2 rounded text-white ${
+                        game.openedApples === 0
+                          ? "bg-green-300 cursor-not-allowed"
+                          : "bg-green-500 hover:bg-green-600"
+                      }`}
+                    >
                       Bank It
                     </button>
                   </div>
@@ -111,6 +143,15 @@ export default function HomePage() {
               setStopOnWin={game.setStopOnWin}
               stopOnLoss={game.stopOnLoss}
               setStopOnLoss={game.setStopOnLoss}
+              disabled={game.manualRunning} 
+              currentJackpot={game.currentJackpot} 
+              openedApples={game.openedApples} 
+              bankValue={game.bankValue}
+              setBankValue={game.setBankValue}
+              cumulativeBankValues={game.cumulativeBankValues}
+              availableBankOptions={game.availableBankOptions} 
+              collectAmount={game.collectAmount} 
+              maxWin={game.maxWin}
             />
           </div>
         </div>
@@ -123,6 +164,13 @@ export default function HomePage() {
             bet={game.bet}
             manualRunning={game.manualRunning}
             stopManualGame={game.stopManualGame}
+            openedApples={game.openedApples}
+            jackpotValues={game.jackpotValues}
+            effectiveJackpots={game.effectiveJackpots}
+            bankValues={game.bankValues}
+            gameOver={game.gameOver}
+            finalValue={game.finalValue}
+            onPopupClose={game.clearGameOver}
           />
         </div>
       </div>
