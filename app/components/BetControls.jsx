@@ -107,10 +107,14 @@ export default function BetControls({
   const canDecrement = bankIndex > 0;
 
   const buttonClass =
-    "w-10 h-10 flex items-center justify-center rounded-lg bg-slate-300 hover:bg-slate-400 active:scale-95 transition disabled:opacity-50 disabled:cursor-not-allowed";
+    "w-10 h-10 flex items-center justify-center rounded-lg text-lg font-bold text-white " +
+    "bg-[url('/inc-dec-dark-button.png')] bg-cover bg-center " +
+    "hover:bg-[url('/inc-dec-button.png')] active:scale-95 transition " +
+    "disabled:opacity-50 disabled:cursor-not-allowed";
+    
 
   return (
-    <div className="p-5 bg-gradient-to-b from-slate-100 to-slate-200 rounded-2xl shadow-xl border border-slate-300 w-full max-w-3xl">
+    <div className="p-5 border rounded-lg bg-gradient-to-b from-blue-400 to-blue-200 shadow-md flex flex-col justify-between">
       <div className="flex gap-8">
         {/* LEFT SIDE */}
         <div className="flex flex-col gap-6 flex-1">
@@ -228,19 +232,13 @@ export default function BetControls({
                 Auto Rounds
               </h3>
               <div className="flex items-center gap-3">
-                <button
-                  onClick={() => stepRounds(-1)}
-                  className="w-10 h-10 flex items-center justify-center rounded-lg bg-slate-300 hover:bg-slate-400 active:scale-95 transition"
-                >
+                <button onClick={() => stepRounds(-1)} className={buttonClass}>
                   −
                 </button>
                 <div className="flex-1 text-center text-lg font-bold bg-white rounded-lg py-2 shadow-inner">
                   {rounds}
                 </div>
-                <button
-                  onClick={() => stepRounds(1)}
-                  className="w-10 h-10 flex items-center justify-center rounded-lg bg-slate-300 hover:bg-slate-400 active:scale-95 transition"
-                >
+                <button onClick={() => stepRounds(1)} className={buttonClass}>
                   +
                 </button>
               </div>
@@ -267,7 +265,7 @@ export default function BetControls({
                 disabled={disabled}
                 className={`flex-1 py-2 rounded-lg font-medium transition ${
                   mode === "auto"
-                    ? "bg-blue-500 text-white shadow"
+                    ? "bg-blue-700 text-white shadow"
                     : "bg-slate-300 hover:bg-slate-400"
                 }`}
               >
@@ -289,7 +287,7 @@ export default function BetControls({
                   disabled={disabled}
                   className={`flex-1 py-2 rounded-lg font-medium border transition ${
                     gridSize === size
-                      ? "bg-green-500 text-white border-green-600 shadow"
+                      ? "bg-blue-700 text-white border-green-600 shadow"
                       : "bg-slate-300 hover:bg-slate-400 border-slate-400"
                   }`}
                 >
