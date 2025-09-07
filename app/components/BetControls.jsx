@@ -293,7 +293,7 @@ export default function BetControls({
                   key={size}
                   onClick={() => setGridSizeClamped(size)}
                   disabled={disabled}
-                  className={`flex-1 py-2 rounded-lg font-medium border-3 transition ${
+                  className={`flex-1 py-1 rounded-lg font-medium border-3 transition ${
                     gridSize === size
                       ? "bg-blue-500 text-white border-black shadow"
                       : "bg-slate-300 hover:bg-slate-400 border-slate-400"

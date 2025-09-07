@@ -19,7 +19,7 @@ export default function AutoGameStats({
   const adjust = (setter, dir) => setter((p) => Math.max(0, p + dir * 5));
 
   return (
-    <div className="w-full p-3 border rounded-lg bg-gradient-to-b from-blue-400 to-blue-200 shadow-md flex flex-col justify-between space-y-3">
+    <div className="w-full p-2 border rounded-lg bg-gradient-to-b from-blue-400 to-blue-200 shadow-md flex flex-col justify-between space-y-3">
       {/* After Win */}
       <div className="flex items-center justify-between">
         <span className="text-xs text-gray-600 font-medium">
@@ -64,12 +64,6 @@ export default function AutoGameStats({
         </div>
       </div>
 
-      {/* Current Bet Info */}
-      <div className="text-center py-1 px-2 bg-white bg-opacity-50 rounded text-xs">
-        <div className="text-gray-700 font-medium">
-          Win: +{afterWin}% | Loss: +{afterLoss}%
-        </div>
-      </div>
 
       {/* Stop Toggles */}
       <div className="flex items-center justify-between">

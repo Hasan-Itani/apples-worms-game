@@ -208,7 +208,7 @@ export default function HomePage() {
               <div className="flex flex-col gap-2">
                 <button
                   onClick={game.stopAutoPlay}
-                  className="w-full py-2 bg-red-500 text-white rounded hover:bg-red-600"
+                  className="w-full py-1 bg-red-500 text-white rounded hover:bg-red-600"
                 >
                   Stop Auto (Round {game.currentRound}/{game.rounds})
                 </button>
@@ -217,11 +217,11 @@ export default function HomePage() {
                 </div>
                 {game.roundInProgress && (
                   <div className="text-center text-sm text-gray-600">
-                    Opening box{" "}
+                    Opening box
                     {Math.min(
                       game.currentBoxIndex + 1,
                       game.selectedBoxes.length
-                    )}{" "}
+                    )}
                     of {game.selectedBoxes.length}...
                   </div>
                 )}
