@@ -252,9 +252,9 @@ export default function BetControls({
               <button
                 onClick={() => setMode("manual")}
                 disabled={disabled}
-                className={`flex-1 py-2 rounded-lg font-medium transition ${
+                className={`flex-1 py-2 rounded-lg font-medium border-3 transition ${
                   mode === "manual"
-                    ? "bg-blue-500 text-white shadow"
+                    ? "bg-blue-500 text-white border-black shadow"
                     : "bg-slate-300 hover:bg-slate-400"
                 }`}
               >
@@ -263,9 +263,9 @@ export default function BetControls({
               <button
                 onClick={() => setMode("auto")}
                 disabled={disabled}
-                className={`flex-1 py-2 rounded-lg font-medium transition ${
+                className={`flex-1 py-2 rounded-lg font-medium border-3 transition ${
                   mode === "auto"
-                    ? "bg-blue-700 text-white shadow"
+                    ? "bg-blue-500 text-white border-black shadow"
                     : "bg-slate-300 hover:bg-slate-400"
                 }`}
               >
@@ -285,9 +285,9 @@ export default function BetControls({
                   key={size}
                   onClick={() => setGridSizeClamped(size)}
                   disabled={disabled}
-                  className={`flex-1 py-2 rounded-lg font-medium border transition ${
+                  className={`flex-1 py-2 rounded-lg font-medium border-3 transition ${
                     gridSize === size
-                      ? "bg-blue-700 text-white border-green-600 shadow"
+                      ? "bg-blue-500 text-white border-black shadow"
                       : "bg-slate-300 hover:bg-slate-400 border-slate-400"
                   }`}
                 >

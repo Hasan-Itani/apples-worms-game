@@ -57,6 +57,7 @@ export default function HomePage() {
           <Boxes
             grid={game.grid}
             handleClick={game.handleClick}
+            openBoxAuto={game.openBoxAuto} // new
             gridSize={game.gridSize}
             worms={game.worms}
             bet={game.bet}
@@ -69,6 +70,10 @@ export default function HomePage() {
             gameOver={game.gameOver}
             finalValue={game.finalValue}
             onPopupClose={game.clearGameOver}
+            mode={game.mode}
+            selectedBoxes={game.selectedBoxes}
+            setSelectedBoxes={game.setSelectedBoxes}
+            gameActive={game.gameActive}
           />
 
           {/* Mobile Start Game button */}

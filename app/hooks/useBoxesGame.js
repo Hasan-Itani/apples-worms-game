@@ -7,7 +7,7 @@ export function useBoxesGame(
   manualRunning = false,
   stopManualGame = () => {},
   bet = 1,
-  onLoss = () => {} // <-- new callback invoked with payout when user hits a worm
+  onLoss = () => {}
 ) {
   const totalBoxes = gridSize * gridSize;
   const apples = Math.max(totalBoxes - worms, 0);
@@ -28,22 +28,13 @@ export function useBoxesGame(
     });
   }, [bet, worms, totalBoxes, apples]);
 
-  // ---- effective jackpots (mutable with penalties)
   const [effectiveJackpots, setEffectiveJackpots] = useState([]);
-
-  // ---- bank values
   const [bankValues, setBankValues] = useState(() => Array(apples).fill(0));
-
-  // reset when game settings change
-  useEffect(() => {
-    setEffectiveJackpots([...jackpotValues]);
-    setBankValues(Array(apples).fill(0));
-  }, [jackpotValues, apples]);
-
   const [grid, setGrid] = useState(Array(totalBoxes).fill("❓"));
   const [bombs, setBombs] = useState([]);
   const [openedApples, setOpenedApples] = useState(0);
   const [firstClickDone, setFirstClickDone] = useState(false);
+  const [isRevealing, setIsRevealing] = useState(false);
 
   const generateBombs = (count) => {
     const positions = new Set();
@@ -60,7 +51,8 @@ export function useBoxesGame(
     setFirstClickDone(false);
     setBankValues(Array(apples).fill(0));
     setEffectiveJackpots([...jackpotValues]);
-    setCumulativeBankValues(Array(apples).fill(0)); // reset
+    setCumulativeBankValues(Array(apples).fill(0));
+    setIsRevealing(false);
   };
 
   useEffect(() => {
@@ -68,7 +60,7 @@ export function useBoxesGame(
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gridSize, worms]);
 
-  // ---- dynamic bank options (based on bet & jackpot)
+  // ---- dynamic bank options
   const availableBankOptions = useMemo(() => {
     if (openedApples === 0) return [];
     const idx = openedApples - 1;
@@ -88,7 +80,6 @@ export function useBoxesGame(
     Array(apples).fill(0)
   );
 
-  // when bankIt is called
   const bankIt = (amountSelected) => {
     if (openedApples === 0) return;
     const idx = openedApples - 1;
@@ -97,7 +88,7 @@ export function useBoxesGame(
 
     const prevCum = cumulativeBankValues[idx - 1] || 0;
     const stepAmountRaw =
-      amountSelected > prevCum ? amountSelected - prevCum : amountSelected; 
+      amountSelected > prevCum ? amountSelected - prevCum : amountSelected;
 
     const stepAmount = +Math.max(0, stepAmountRaw).toFixed(2);
     if (stepAmount <= 0) return;
@@ -141,15 +132,32 @@ export function useBoxesGame(
   }, [bankValues, effectiveJackpots, openedApples]);
 
   const [collectedAmount, setCollectedAmount] = useState(0);
+
+  // --- Reveal all boxes helper
+  const revealAllBoxes = (newGrid, bombsList) => {
+    const finalGrid = newGrid.map((cell, i) => {
+      if (cell !== "❓") return cell;
+      return bombsList.includes(i) ? "💣" : "🍎";
+    });
+    setGrid(finalGrid);
+  };
+
   const collectApples = () => {
     const payout =
       (bankValues.reduce((a, b) => a + (b || 0), 0) || 0) +
       (openedApples > 0 ? effectiveJackpots[openedApples - 1] || 0 : 0);
 
     setCollectedAmount(payout);
-    resetGame();
+    setIsRevealing(true);
+    revealAllBoxes([...grid], bombs);
+
+    setTimeout(() => {
+      resetGame();
+    }, 3000);
+
     return payout;
   };
+
   const maxWin = useMemo(() => {
     if (!effectiveJackpots?.length) return 0;
     return Math.max(...effectiveJackpots);
@@ -158,32 +166,31 @@ export function useBoxesGame(
   return {
     grid,
     handleClick: (index) => {
-      if (!manualRunning) return;
+      if (!manualRunning || isRevealing) return;
       if (grid[index] !== "❓") return;
 
       if (!firstClickDone) setFirstClickDone(true);
 
       const newGrid = [...grid];
       if (bombs.includes(index)) {
-        // 💣 Worm logic
         newGrid[index] = "💣";
         setGrid(newGrid);
 
+        setIsRevealing(true);
+        revealAllBoxes(newGrid, bombs);
+
         setTimeout(() => {
           const banked = bankValues.reduce((a, b) => a + (Number(b) || 0), 0);
-
           try {
-            onLoss(banked); // 0 if nothing banked
+            onLoss(banked);
           } catch (err) {
             console.error("onLoss callback threw:", err);
           }
-
           stopManualGame();
           resetGame();
           setFirstClickDone(false);
-        }, 200);
+        }, 1000);
       } else {
-        // 🍎 Apple logic
         newGrid[index] = "🍎";
         setGrid(newGrid);
 
@@ -191,13 +198,16 @@ export function useBoxesGame(
           const newOpened = prev + 1;
 
           if (newOpened >= apples) {
+            setIsRevealing(true);
+            revealAllBoxes(newGrid, bombs);
+
             setTimeout(() => {
               const payout =
                 bankValues.reduce((a, b) => a + (b || 0), 0) +
                 (effectiveJackpots[newOpened - 1] || 0);
 
               try {
-                onLoss(payout); // credit winnings instantly
+                onLoss(payout);
               } catch (err) {
                 console.error("onWin callback threw:", err);
               }
@@ -205,7 +215,7 @@ export function useBoxesGame(
               stopManualGame();
               resetGame();
               setFirstClickDone(false);
-            }, 200);
+            }, 1000);
           }
 
           return newOpened;
@@ -225,7 +235,7 @@ export function useBoxesGame(
     bankIt,
     availableBankOptions,
     firstClickDone,
-    cumulativeBankValues, 
-    maxWin, 
+    cumulativeBankValues,
+    maxWin,
   };
 }
