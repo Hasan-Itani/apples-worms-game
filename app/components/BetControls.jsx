@@ -114,7 +114,7 @@ export default function BetControls({
     
 
   return (
-    <div className="p-5 border rounded-lg bg-gradient-to-b from-blue-400 to-blue-200 shadow-md flex flex-col justify-between">
+    <div className="p-2 border rounded-lg bg-gradient-to-b from-blue-400 to-blue-200 shadow-md flex flex-col justify-between">
       <div className="flex gap-8">
         {/* LEFT SIDE */}
         <div className="flex flex-col gap-6 flex-1">

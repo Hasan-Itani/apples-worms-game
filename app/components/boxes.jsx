@@ -20,6 +20,10 @@ export default function Boxes({
   gameOver,
   finalValue,
   onPopupClose,
+  mode,
+  selectedBoxes,
+  setSelectedBoxes,
+  gameActive,
 }) {
   const [showPopup, setShowPopup] = useState(false);
   const [revealAll, setRevealAll] = useState(false);
@@ -27,7 +31,7 @@ export default function Boxes({
   const [revealedIndexes, setRevealedIndexes] = useState([]);
   const prevManualRunningRef = useRef(manualRunning);
 
-  // handle gameOver: reveal all + show popup
+  // Show popup and reveal all when gameOver triggers
   useEffect(() => {
     if (gameOver) {
       setRevealAll(true);
@@ -35,7 +39,7 @@ export default function Boxes({
     }
   }, [gameOver]);
 
-  // reset when new game starts
+  // Reset state when a new manual game starts
   useEffect(() => {
     if (!prevManualRunningRef.current && manualRunning) {
       setRevealedIndexes([]);
@@ -45,17 +49,37 @@ export default function Boxes({
     prevManualRunningRef.current = manualRunning;
   }, [manualRunning]);
 
-  // handle Close popup (manual or timeout)
+  // Clear selections when switching modes
+  useEffect(() => {
+    if (mode === "manual") {
+      setSelectedBoxes([]);
+    }
+  }, [mode, setSelectedBoxes]);
+
+  // Close popup
   const handleClosePopup = () => {
     setShowPopup(false);
     setRevealAll(false);
     onPopupClose && onPopupClose();
   };
 
-  // local click with shake first
+  // Box selection in auto mode
+  const handleBoxSelection = (index) => {
+    if (mode !== "auto" || gameActive) return;
+    setSelectedBoxes((prev) =>
+      prev.includes(index) ? prev.filter((i) => i !== index) : [...prev, index]
+    );
+  };
+
+  // Click box in manual mode with shake animation
   const handleBoxClickLocal = (index) => {
+    if (mode === "auto") {
+      handleBoxSelection(index);
+      return;
+    }
+
     if (!manualRunning) return;
-    if (shakingIndex !== null) return; // prevent double click during shake
+    if (shakingIndex !== null) return;
     if (revealedIndexes.includes(index)) return;
     if (grid[index] !== "❓") return;
 
@@ -68,7 +92,7 @@ export default function Boxes({
   };
 
   return (
-    <div className="flex flex-col items-center gap-6 align-center w-full">
+    <div className="flex flex-col items-center gap-6 w-full">
       <Jackpot
         gridSize={gridSize}
         worms={worms}
@@ -79,21 +103,28 @@ export default function Boxes({
         bankValues={bankValues}
       />
 
+      {mode === "auto" && !gameActive && (
+        <div className="text-center text-sm -mt-text-gray-700">
+          Select {selectedBoxes.length} boxes to open automatically
+        </div>
+      )}
+
       <div className="relative w-full max-w-md aspect-square">
         {/* grid */}
         <div
           className="grid gap-2 w-full h-full"
-          style={{
-            gridTemplateColumns: `repeat(${gridSize}, 1fr)`,
-          }}
+          style={{ gridTemplateColumns: `repeat(${gridSize}, 1fr)` }}
         >
           {grid.map((cell, index) => {
             const isRevealed =
               revealAll || revealedIndexes.includes(index) || cell !== "❓";
             const isDisabled =
-              !manualRunning ||
-              isRevealed ||
-              (shakingIndex !== null && shakingIndex !== index);
+              (mode === "manual" &&
+                (!manualRunning ||
+                  isRevealed ||
+                  (shakingIndex !== null && shakingIndex !== index))) ||
+              (mode === "auto" && gameActive);
+            const isSelected = mode === "auto" && selectedBoxes.includes(index);
 
             return (
               <motion.div
@@ -101,7 +132,7 @@ export default function Boxes({
                 onClick={() => handleBoxClickLocal(index)}
                 className={`relative flex items-center justify-center cursor-pointer ${
                   isDisabled ? "pointer-events-none opacity-60" : ""
-                }`}
+                } ${isSelected ? "ring-4 ring-blue-500 ring-opacity-70" : ""}`}
                 animate={
                   shakingIndex === index
                     ? {
@@ -119,6 +150,13 @@ export default function Boxes({
                   fill
                   className="object-contain select-none pointer-events-none"
                 />
+
+                {/* Auto selection indicator */}
+                {isSelected && (
+                  <div className="absolute -top-1 -right-1 w-6 h-6 bg-blue-500 text-white rounded-full flex items-center justify-center text-xs font-bold">
+                    {selectedBoxes.indexOf(index) + 1}
+                  </div>
+                )}
 
                 {isRevealed && cell !== "❓" && (
                   <div className="absolute w-3/4 h-3/4">
@@ -145,7 +183,7 @@ export default function Boxes({
           })}
         </div>
 
-        {/* centered popup overlay */}
+        {/* Result popup */}
         <AnimatePresence>
           {showPopup && (
             <motion.div
@@ -156,15 +194,12 @@ export default function Boxes({
               className="absolute inset-0 z-50 flex items-center justify-center bg-black/50"
             >
               <div className="relative w-64 h-64 flex items-center justify-center">
-                {/* background image */}
                 <Image
                   src="/win.png"
                   alt="Result"
                   fill
                   className="object-contain"
                 />
-
-                {/* text on top of the image */}
                 <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
                   <motion.div
                     initial={{ y: 8, opacity: 0 }}
@@ -183,7 +218,6 @@ export default function Boxes({
                     </div>
                   </motion.div>
 
-                  {/* close button */}
                   <button
                     onClick={handleClosePopup}
                     className="mt-4 px-3 py-1 bg-white/20 rounded text-white text-sm pointer-events-auto"

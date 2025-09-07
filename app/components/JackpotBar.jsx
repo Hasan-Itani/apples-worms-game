@@ -121,7 +121,7 @@ export default function JackpotBar({
   };
 
   return (
-    <div className="flex flex-col items-center gap-3 w-full max-w-md">
+    <div className="flex flex-col items-center w-full max-w-md">
       <div className="text-center">
         <h2 className="text-xl font-extrabold tracking-widest text-gray-800">
           JACKPOT

@@ -16,7 +16,6 @@ export default function AutoGameStats({
     "hover:bg-[url('/inc-dec-button.png')] active:scale-95 transition " +
     "disabled:opacity-50 disabled:cursor-not-allowed";
 
-
   const adjust = (setter, dir) => setter((p) => p + dir * 5);
 
   return (
@@ -31,17 +30,11 @@ export default function AutoGameStats({
           >
             Reset
           </button>
-          <button
-            onClick={() => adjust(setAfterWin, -1)}
-            className={buttonClass}
-          >
+          <button onClick={() => adjust(setAfterWin, -1)} className={buttonClass}>
             −
           </button>
           <span className="w-8 text-center font-bold text-sm">{afterWin}</span>
-          <button
-            onClick={() => adjust(setAfterWin, 1)}
-            className={buttonClass}
-          >
+          <button onClick={() => adjust(setAfterWin, 1)} className={buttonClass}>
             +
           </button>
         </div>
@@ -57,17 +50,11 @@ export default function AutoGameStats({
           >
             Reset
           </button>
-          <button
-            onClick={() => adjust(setAfterLoss, -1)}
-            className={buttonClass}
-          >
+          <button onClick={() => adjust(setAfterLoss, -1)} className={buttonClass}>
             −
           </button>
           <span className="w-8 text-center font-bold text-sm">{afterLoss}</span>
-          <button
-            onClick={() => adjust(setAfterLoss, 1)}
-            className={buttonClass}
-          >
+          <button onClick={() => adjust(setAfterLoss, 1)} className={buttonClass}>
             +
           </button>
         </div>
@@ -79,9 +66,7 @@ export default function AutoGameStats({
         <button
           onClick={() => setStopOnWin((s) => !s)}
           className={`px-2 py-0.5 rounded text-xs font-medium ${
-            stopOnWin
-              ? "bg-blue-500 text-white shadow"
-              : "bg-blue-500 hover:bg-blue-400"
+            stopOnWin ? "bg-blue-500 text-white shadow" : "bg-blue-500 hover:bg-blue-400"
           }`}
         >
           {stopOnWin ? "ON" : "OFF"}
@@ -93,9 +78,7 @@ export default function AutoGameStats({
         <button
           onClick={() => setStopOnLoss((s) => !s)}
           className={`px-2 py-0.5 rounded text-xs font-medium ${
-            stopOnLoss
-              ? "bg-blue-500 text-white shadow"
-              : "bg-blue-500 hover:bg-blue-400"
+            stopOnLoss ? "bg-blue-500 text-white shadow" : "bg-blue-500 hover:bg-blue-400"
           }`}
         >
           {stopOnLoss ? "ON" : "OFF"}

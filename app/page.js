@@ -187,19 +187,36 @@ export default function HomePage() {
               <button
                 onClick={game.startAutoPlay}
                 className="w-full py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+                disabled={
+                  game.balance < game.bet || game.selectedBoxes.length === 0
+                }
               >
-                Start Auto Play
+                Start Auto Play ({game.rounds} rounds)
+                {game.selectedBoxes.length === 0 && (
+                  <div className="text-xs mt-1">Select boxes first!</div>
+                )}
               </button>
             )}
             {game.mode === "auto" && game.gameActive && (
-              <button
-                onClick={game.stopAutoPlay}
-                className="w-full py-2 bg-red-500 text-white rounded hover:bg-red-600"
-              >
-                Stop Auto
-              </button>
+              <div className="flex flex-col gap-2">
+                <button
+                  onClick={game.stopAutoPlay}
+                  className="w-full py-2 bg-red-500 text-white rounded hover:bg-red-600"
+                >
+                  Stop Auto (Round {game.currentRound}/{game.rounds})
+                </button>
+                {game.roundInProgress && (
+                  <div className="text-center text-sm text-gray-600">
+                    Opening box{" "}
+                    {Math.min(
+                      game.currentBoxIndex + 1,
+                      game.selectedBoxes.length
+                    )}{" "}
+                    of {game.selectedBoxes.length}...
+                  </div>
+                )}
+              </div>
             )}
-
             {/* Bet & Controls */}
             <BetControls
               bet={game.bet}

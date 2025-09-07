@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 
 export function useBoxesGame(
   gridSize = 4,
@@ -7,7 +7,16 @@ export function useBoxesGame(
   manualRunning = false,
   stopManualGame = () => {},
   bet = 1,
-  onLoss = () => {}
+  onLoss = () => {},
+  mode = "manual",
+  autoGameActive = false,
+  selectedBoxes = [],
+  currentBoxIndex = 0,
+  setCurrentBoxIndex = () => {},
+  roundInProgress = false,
+  setRoundInProgress = () => {},
+  nextRound = () => {},
+  maxRounds = 10
 ) {
   const totalBoxes = gridSize * gridSize;
   const apples = Math.max(totalBoxes - worms, 0);
@@ -17,7 +26,6 @@ export function useBoxesGame(
     const rarityFactor = 1 + (worms / totalBoxes) * 4;
     const minGrowth = 1.02;
     const maxGrowth = 1.5;
-
     return Array.from({ length: apples }, (_, i) => {
       const denom = Math.max(apples - 1, 1);
       const progress = i / denom;
@@ -35,6 +43,18 @@ export function useBoxesGame(
   const [openedApples, setOpenedApples] = useState(0);
   const [firstClickDone, setFirstClickDone] = useState(false);
   const [isRevealing, setIsRevealing] = useState(false);
+  const [collectedAmount, setCollectedAmount] = useState(0);
+
+  const [cumulativeBankValues, setCumulativeBankValues] = useState(() =>
+    Array(apples).fill(0)
+  );
+
+  const collectAmount = useMemo(() => {
+    const banked = bankValues.reduce((a, b) => a + (b || 0), 0);
+    const lastJackpot =
+      openedApples > 0 ? effectiveJackpots[openedApples - 1] || 0 : 0;
+    return +(banked + lastJackpot).toFixed(2);
+  }, [bankValues, effectiveJackpots, openedApples]);
 
   const generateBombs = (count) => {
     const positions = new Set();
@@ -57,83 +77,93 @@ export function useBoxesGame(
 
   useEffect(() => {
     resetGame();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gridSize, worms]);
 
-  // ---- dynamic bank options
-  const availableBankOptions = useMemo(() => {
-    if (openedApples === 0) return [];
-    const idx = openedApples - 1;
-    const jackpot = effectiveJackpots[idx] || 0;
+  // ----- Prevent duplicate auto-run in Strict Mode
+  const didRunRef = useRef(false);
 
-    let options = [];
-    let value = bet / 4;
-    while (value <= jackpot) {
-      options.push(+value.toFixed(2));
-      value *= 2;
+  // Auto start new round
+  useEffect(() => {
+    if (
+      mode === "auto" &&
+      autoGameActive &&
+      !roundInProgress &&
+      selectedBoxes.length > 0
+    ) {
+      if (didRunRef.current) return;
+      didRunRef.current = true;
+
+      console.log("Starting new auto round...");
+      setRoundInProgress(true);
+      setCurrentBoxIndex(0);
+      resetGame();
+      setFirstClickDone(true);
+
+      setTimeout(() => {
+        didRunRef.current = false;
+      }, 0);
     }
-    return options;
-  }, [openedApples, effectiveJackpots, bet]);
+  }, [mode, autoGameActive, roundInProgress, selectedBoxes.length]);
 
-  // ---- cumulative bank values
-  const [cumulativeBankValues, setCumulativeBankValues] = useState(() =>
-    Array(apples).fill(0)
-  );
+  // Auto-play sequential box opening
+  useEffect(() => {
+    if (
+      mode === "auto" &&
+      roundInProgress &&
+      autoGameActive &&
+      selectedBoxes.length > 0
+    ) {
+      const timer = setTimeout(() => {
+        if (currentBoxIndex >= selectedBoxes.length) {
+          onLoss(collectAmount);
+          setTimeout(() => nextRound(maxRounds), 1000);
+          return;
+        }
 
-  const bankIt = (amountSelected) => {
-    if (openedApples === 0) return;
-    const idx = openedApples - 1;
+        const boxIndex = selectedBoxes[currentBoxIndex];
+        console.log(
+          `Opening box ${currentBoxIndex + 1}/${
+            selectedBoxes.length
+          } at index ${boxIndex}`
+        );
 
-    if (bankValues[idx] > 0) return;
+        if (grid[boxIndex] === "❓") {
+          const newGrid = [...grid];
 
-    const prevCum = cumulativeBankValues[idx - 1] || 0;
-    const stepAmountRaw =
-      amountSelected > prevCum ? amountSelected - prevCum : amountSelected;
+          if (bombs.includes(boxIndex)) {
+            newGrid[boxIndex] = "💣";
+            setGrid(newGrid);
+            const banked = bankValues.reduce((a, b) => a + (Number(b) || 0), 0);
+            onLoss(banked);
+            setTimeout(() => nextRound(maxRounds), 800);
+          } else {
+            newGrid[boxIndex] = "🍎";
+            setGrid(newGrid);
+            setOpenedApples((prev) => prev + 1);
+            setCurrentBoxIndex((prev) => prev + 1);
+          }
+        } else {
+          setCurrentBoxIndex((prev) => prev + 1);
+        }
+      }, 800);
 
-    const stepAmount = +Math.max(0, stepAmountRaw).toFixed(2);
-    if (stepAmount <= 0) return;
+      return () => clearTimeout(timer);
+    }
+  }, [
+    mode,
+    roundInProgress,
+    autoGameActive,
+    currentBoxIndex,
+    selectedBoxes,
+    grid,
+    bombs,
+    bankValues,
+    onLoss,
+    nextRound,
+    maxRounds,
+    collectAmount,
+  ]);
 
-    const available = effectiveJackpots[idx] || 0;
-    if (stepAmount > available) return;
-
-    const penaltyRate = 0.1;
-    const penalty = +(stepAmount * penaltyRate).toFixed(2);
-
-    setBankValues((prev) => {
-      const copy = [...prev];
-      copy[idx] = stepAmount;
-      return copy;
-    });
-
-    setEffectiveJackpots((prev) =>
-      prev.map((val) => Math.max(0, +(val - stepAmount - penalty).toFixed(2)))
-    );
-
-    setCumulativeBankValues((prev) => {
-      const copy = [...prev];
-      const newTotal = +(prevCum + stepAmount).toFixed(2);
-      for (let i = idx; i < copy.length; i++) {
-        copy[i] = newTotal;
-      }
-      return copy;
-    });
-  };
-
-  const currentJackpot =
-    openedApples > 0
-      ? Math.max(0, +effectiveJackpots[openedApples - 1].toFixed(2))
-      : "0.00";
-
-  const collectAmount = useMemo(() => {
-    const banked = bankValues.reduce((a, b) => a + (b || 0), 0);
-    const lastJackpot =
-      openedApples > 0 ? effectiveJackpots[openedApples - 1] || 0 : 0;
-    return +(banked + lastJackpot).toFixed(2);
-  }, [bankValues, effectiveJackpots, openedApples]);
-
-  const [collectedAmount, setCollectedAmount] = useState(0);
-
-  // --- Reveal all boxes helper
   const revealAllBoxes = (newGrid, bombsList) => {
     const finalGrid = newGrid.map((cell, i) => {
       if (cell !== "❓") return cell;
@@ -148,12 +178,14 @@ export function useBoxesGame(
       (openedApples > 0 ? effectiveJackpots[openedApples - 1] || 0 : 0);
 
     setCollectedAmount(payout);
-    setIsRevealing(true);
-    revealAllBoxes([...grid], bombs);
 
-    setTimeout(() => {
-      resetGame();
-    }, 3000);
+    if (mode === "manual") {
+      setIsRevealing(true);
+      revealAllBoxes([...grid], bombs);
+      setTimeout(() => {
+        resetGame();
+      }, 3000);
+    }
 
     return payout;
   };
@@ -166,6 +198,8 @@ export function useBoxesGame(
   return {
     grid,
     handleClick: (index) => {
+      if (mode === "auto") return;
+
       if (!manualRunning || isRevealing) return;
       if (grid[index] !== "❓") return;
 
@@ -175,17 +209,12 @@ export function useBoxesGame(
       if (bombs.includes(index)) {
         newGrid[index] = "💣";
         setGrid(newGrid);
-
         setIsRevealing(true);
         revealAllBoxes(newGrid, bombs);
 
         setTimeout(() => {
           const banked = bankValues.reduce((a, b) => a + (Number(b) || 0), 0);
-          try {
-            onLoss(banked);
-          } catch (err) {
-            console.error("onLoss callback threw:", err);
-          }
+          onLoss(banked);
           stopManualGame();
           resetGame();
           setFirstClickDone(false);
@@ -193,49 +222,40 @@ export function useBoxesGame(
       } else {
         newGrid[index] = "🍎";
         setGrid(newGrid);
-
         setOpenedApples((prev) => {
           const newOpened = prev + 1;
-
           if (newOpened >= apples) {
             setIsRevealing(true);
             revealAllBoxes(newGrid, bombs);
-
             setTimeout(() => {
               const payout =
                 bankValues.reduce((a, b) => a + (b || 0), 0) +
                 (effectiveJackpots[newOpened - 1] || 0);
-
-              try {
-                onLoss(payout);
-              } catch (err) {
-                console.error("onWin callback threw:", err);
-              }
-
+              onLoss(payout);
               stopManualGame();
               resetGame();
               setFirstClickDone(false);
             }, 1000);
           }
-
           return newOpened;
         });
       }
     },
-
     resetGame,
     openedApples,
     jackpotValues,
     effectiveJackpots,
     bankValues,
-    currentJackpot,
+    currentJackpot:
+      openedApples > 0
+        ? Math.max(0, +effectiveJackpots[openedApples - 1].toFixed(2))
+        : "0.00",
     collectApples,
     collectedAmount,
     collectAmount,
-    bankIt,
-    availableBankOptions,
-    firstClickDone,
-    cumulativeBankValues,
     maxWin,
+    cumulativeBankValues,
+    bankIt: () => {},
+    availableBankOptions: [],
   };
 }
