@@ -104,7 +104,7 @@ export default function Boxes({
       />
 
       {mode === "auto" && !gameActive && (
-        <div className="text-center text-sm -mt-text-gray-700">
+        <div className="text-center text-sm -mt-text-gray-700 rounded-3xl bg-black shadow-md backdrop-blur-md p-2">
           Select {selectedBoxes.length} boxes to open automatically
         </div>
       )}

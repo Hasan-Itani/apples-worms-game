@@ -228,51 +228,59 @@ export default function BetControls({
             </div>
           ) : (
             <div>
-              <h3 className="text-sm text-gray-600 font-medium mb-1">
-                Auto Rounds
-              </h3>
-              <div className="flex items-center gap-3">
-                <button onClick={() => stepRounds(-1)} className={buttonClass}>
-                  −
-                </button>
-                <div className="flex-1 text-center text-lg font-bold bg-white rounded-lg py-2 shadow-inner">
-                  {rounds}
-                </div>
-                <button onClick={() => stepRounds(1)} className={buttonClass}>
-                  +
-                </button>
+            <h3 className="text-sm text-gray-600 font-medium mb-1">
+              Auto Rounds
+            </h3>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => stepRounds(-1)}
+                disabled={disabled}
+                className={buttonClass}
+              >
+                −
+              </button>
+              <div className="flex-1 text-center text-lg font-bold bg-white rounded-lg py-2 shadow-inner">
+                {rounds}
               </div>
+              <button
+                onClick={() => stepRounds(1)}
+                disabled={disabled}
+                className={buttonClass}
+              >
+                +
+              </button>
             </div>
+          </div>
           )}
 
           {/* Mode toggle */}
           <div>
-            <h3 className="text-sm text-gray-600 font-medium mb-1">Mode</h3>
-            <div className="flex gap-2">
-              <button
-                onClick={() => setMode("manual")}
-                disabled={disabled}
-                className={`flex-1 py-2 rounded-lg font-medium border-3 transition ${
-                  mode === "manual"
-                    ? "bg-blue-500 text-white border-black shadow"
-                    : "bg-slate-300 hover:bg-slate-400"
-                }`}
-              >
-                Manual
-              </button>
-              <button
-                onClick={() => setMode("auto")}
-                disabled={disabled}
-                className={`flex-1 py-2 rounded-lg font-medium border-3 transition ${
-                  mode === "auto"
-                    ? "bg-blue-500 text-white border-black shadow"
-                    : "bg-slate-300 hover:bg-slate-400"
-                }`}
-              >
-                Auto
-              </button>
-            </div>
+          <h3 className="text-sm text-gray-600 font-medium mb-1">Mode</h3>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setMode("manual")}
+              disabled={disabled}
+              className={`flex-1 py-2 rounded-lg font-medium border-3 transition ${
+                mode === "manual"
+                  ? "bg-blue-500 text-white border-black shadow"
+                  : "bg-slate-300 hover:bg-slate-400"
+              }`}
+            >
+              Manual
+            </button>
+            <button
+              onClick={() => setMode("auto")}
+              disabled={disabled}
+              className={`flex-1 py-2 rounded-lg font-medium border-3 transition ${
+                mode === "auto"
+                  ? "bg-blue-500 text-white border-black shadow"
+                  : "bg-slate-300 hover:bg-slate-400"
+              }`}
+            >
+              Auto
+            </button>
           </div>
+        </div>
 
           {/* Grid Size */}
           <div>

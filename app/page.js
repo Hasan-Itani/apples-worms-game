@@ -243,7 +243,7 @@ export default function HomePage() {
               setStopOnWin={game.setStopOnWin}
               stopOnLoss={game.stopOnLoss}
               setStopOnLoss={game.setStopOnLoss}
-              disabled={game.manualRunning}
+              disabled={game.manualRunning || (game.mode === "auto" && game.gameActive)}
               currentJackpot={game.currentJackpot}
               openedApples={game.openedApples}
               bankValue={game.bankValue}
