@@ -21,16 +21,21 @@ export function useGameLogic() {
   const [gameOver, setGameOver] = useState(false);
   const [finalValue, setFinalValue] = useState(0);
 
-const autoHook = useAutoGame(balanceHook.balance, balanceHook.bet, balanceHook.setBalance);
-
+  // In useGameLogic.js, update this line:
+  const autoHook = useAutoGame(
+    balanceHook.balance,
+    balanceHook.bet,
+    balanceHook.setBet,
+    balanceHook.setBalance
+  );
   const [mode, _setMode] = useState("manual");
   const setMode = (newMode) => {
-  _setMode(newMode);
-  boxesHook.resetGame();
-  setSelectedBoxes([]);
-  setGameOver(false);
-  setFinalValue(0);
-};
+    _setMode(newMode);
+    boxesHook.resetGame();
+    setSelectedBoxes([]);
+    setGameOver(false);
+    setFinalValue(0);
+  };
   const [rounds, setRounds] = useState(10);
   const roundSteps = [5, 10, 15, 20, 30, 40, 50, 100];
 

@@ -1,20 +1,23 @@
 "use client";
 import { useState } from "react";
 
-export function useAutoGame(balance, bet, setBalance) {
+export function useAutoGame(balance, bet, setBet, setBalance) {
   const [gameActive, setGameActive] = useState(false);
   const [currentRound, setCurrentRound] = useState(0);
   const [maxRounds, setMaxRounds] = useState(10);
 
-  const [afterWin, setAfterWin] = useState(5);
-  const [afterLoss, setAfterLoss] = useState(5);
+  const [afterWin, setAfterWin] = useState(25); // Percentage increase after win
+  const [afterLoss, setAfterLoss] = useState(50); // Percentage increase after loss
   const [stopOnWin, setStopOnWin] = useState(false);
   const [stopOnLoss, setStopOnLoss] = useState(false);
 
   const [currentBoxIndex, setCurrentBoxIndex] = useState(0);
   const [roundInProgress, setRoundInProgress] = useState(false);
 
-  const clampValue = (val, min = 0, max = 100) =>
+  // Store original bet for reset functionality
+  const [originalBet, setOriginalBet] = useState(bet);
+
+  const clampValue = (val, min = 0, max = 200) =>
     Math.min(Math.max(val, min), max);
 
   const setAfterWinClamped = (valOrFn) => {
@@ -30,6 +33,7 @@ export function useAutoGame(balance, bet, setBalance) {
   };
 
   const startAutoPlay = (rounds) => {
+    setOriginalBet(bet); // Store the starting bet
     setMaxRounds(rounds);
     setGameActive(true);
     setCurrentRound(1);
@@ -45,6 +49,8 @@ export function useAutoGame(balance, bet, setBalance) {
     setRoundInProgress(false);
     setCurrentRound(0);
     setCurrentBoxIndex(0);
+    // Reset bet to original value when stopping
+    setBet(originalBet);
   };
 
   const nextRound = () => {
@@ -65,6 +71,20 @@ export function useAutoGame(balance, bet, setBalance) {
   };
 
   const handleGameResult = (isWin, amount) => {
+    // Adjust bet based on win/loss and percentage settings
+    if (isWin && afterWin > 0) {
+      setBet((prevBet) => {
+        const increase = prevBet * (afterWin / 100);
+        return +(prevBet + increase).toFixed(2);
+      });
+    } else if (!isWin && afterLoss > 0) {
+      setBet((prevBet) => {
+        const increase = prevBet * (afterLoss / 100);
+        return +(prevBet + increase).toFixed(2);
+      });
+    }
+
+    // Stop conditions
     if (isWin && stopOnWin) stopAutoPlay();
     if (!isWin && stopOnLoss) stopAutoPlay();
   };
@@ -89,5 +109,6 @@ export function useAutoGame(balance, bet, setBalance) {
     setRoundInProgress,
     nextRound,
     handleGameResult,
+    originalBet, // Expose for UI display
   };
 }

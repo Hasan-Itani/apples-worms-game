@@ -16,13 +16,15 @@ export default function AutoGameStats({
     "hover:bg-[url('/inc-dec-button.png')] active:scale-95 transition " +
     "disabled:opacity-50 disabled:cursor-not-allowed";
 
-  const adjust = (setter, dir) => setter((p) => p + dir * 5);
+  const adjust = (setter, dir) => setter((p) => Math.max(0, p + dir * 5));
 
   return (
-    <div className="w-full h-40 p-3 border rounded-lg bg-gradient-to-b from-blue-400 to-blue-200 shadow-md flex flex-col justify-between">
+    <div className="w-full p-3 border rounded-lg bg-gradient-to-b from-blue-400 to-blue-200 shadow-md flex flex-col justify-between space-y-3">
       {/* After Win */}
       <div className="flex items-center justify-between">
-        <span className="text-xs text-gray-600 font-medium">After Win:</span>
+        <span className="text-xs text-gray-600 font-medium">
+          After Win (+%):
+        </span>
         <div className="flex items-center gap-1">
           <button
             onClick={() => setAfterWin(0)}
@@ -33,7 +35,7 @@ export default function AutoGameStats({
           <button onClick={() => adjust(setAfterWin, -1)} className={buttonClass}>
             −
           </button>
-          <span className="w-8 text-center font-bold text-sm">{afterWin}</span>
+          <span className="w-10 text-center font-bold text-sm">{afterWin}%</span>
           <button onClick={() => adjust(setAfterWin, 1)} className={buttonClass}>
             +
           </button>
@@ -42,7 +44,9 @@ export default function AutoGameStats({
 
       {/* After Loss */}
       <div className="flex items-center justify-between">
-        <span className="text-xs text-gray-600 font-medium">After Loss:</span>
+        <span className="text-xs text-gray-600 font-medium">
+          After Loss (+%):
+        </span>
         <div className="flex items-center gap-1">
           <button
             onClick={() => setAfterLoss(0)}
@@ -53,10 +57,17 @@ export default function AutoGameStats({
           <button onClick={() => adjust(setAfterLoss, -1)} className={buttonClass}>
             −
           </button>
-          <span className="w-8 text-center font-bold text-sm">{afterLoss}</span>
+          <span className="w-10 text-center font-bold text-sm">{afterLoss}%</span>
           <button onClick={() => adjust(setAfterLoss, 1)} className={buttonClass}>
             +
           </button>
+        </div>
+      </div>
+
+      {/* Current Bet Info */}
+      <div className="text-center py-1 px-2 bg-white bg-opacity-50 rounded text-xs">
+        <div className="text-gray-700 font-medium">
+          Win: +{afterWin}% | Loss: +{afterLoss}%
         </div>
       </div>
 
@@ -65,8 +76,8 @@ export default function AutoGameStats({
         <span className="text-xs text-gray-600 font-medium">Stop at Win:</span>
         <button
           onClick={() => setStopOnWin((s) => !s)}
-          className={`px-2 py-0.5 rounded text-xs font-medium ${
-            stopOnWin ? "bg-blue-500 text-white shadow" : "bg-blue-500 hover:bg-blue-400"
+          className={`px-2 py-0.5 rounded text-xs font-medium transition-colors ${
+            stopOnWin ? "bg-green-500 text-white shadow" : "bg-gray-300 hover:bg-gray-400"
           }`}
         >
           {stopOnWin ? "ON" : "OFF"}
@@ -77,8 +88,8 @@ export default function AutoGameStats({
         <span className="text-xs text-gray-600 font-medium">Stop at Loss:</span>
         <button
           onClick={() => setStopOnLoss((s) => !s)}
-          className={`px-2 py-0.5 rounded text-xs font-medium ${
-            stopOnLoss ? "bg-blue-500 text-white shadow" : "bg-blue-500 hover:bg-blue-400"
+          className={`px-2 py-0.5 rounded text-xs font-medium transition-colors ${
+            stopOnLoss ? "bg-red-500 text-white shadow" : "bg-gray-300 hover:bg-gray-400"
           }`}
         >
           {stopOnLoss ? "ON" : "OFF"}

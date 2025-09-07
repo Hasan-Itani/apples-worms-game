@@ -184,18 +184,25 @@ export default function HomePage() {
 
             {/* Auto controls */}
             {game.mode === "auto" && !game.gameActive && (
-              <button
-                onClick={game.startAutoPlay}
-                className="w-full py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-                disabled={
-                  game.balance < game.bet || game.selectedBoxes.length === 0
-                }
-              >
-                Start Auto Play ({game.rounds} rounds)
-                {game.selectedBoxes.length === 0 && (
-                  <div className="text-xs mt-1">Select boxes first!</div>
+              <div className="space-y-2">
+                <button
+                  onClick={game.startAutoPlay}
+                  className="w-full py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+                  disabled={
+                    game.balance < game.bet || game.selectedBoxes.length === 0
+                  }
+                >
+                  Start Auto Play ({game.rounds} rounds)
+                  {game.selectedBoxes.length === 0 && (
+                    <div className="text-xs mt-1">Select boxes first!</div>
+                  )}
+                </button>
+                {game.originalBet && game.originalBet !== game.bet && (
+                  <div className="text-xs text-center text-gray-600">
+                    Original bet: {game.originalBet} → Current: {game.bet}
+                  </div>
                 )}
-              </button>
+              </div>
             )}
             {game.mode === "auto" && game.gameActive && (
               <div className="flex flex-col gap-2">
@@ -205,6 +212,9 @@ export default function HomePage() {
                 >
                   Stop Auto (Round {game.currentRound}/{game.rounds})
                 </button>
+                <div className="text-xs text-center text-gray-600">
+                  Current bet: {game.bet} (Started: {game.originalBet})
+                </div>
                 {game.roundInProgress && (
                   <div className="text-center text-sm text-gray-600">
                     Opening box{" "}
@@ -243,7 +253,9 @@ export default function HomePage() {
               setStopOnWin={game.setStopOnWin}
               stopOnLoss={game.stopOnLoss}
               setStopOnLoss={game.setStopOnLoss}
-              disabled={game.manualRunning || (game.mode === "auto" && game.gameActive)}
+              disabled={
+                game.manualRunning || (game.mode === "auto" && game.gameActive)
+              }
               currentJackpot={game.currentJackpot}
               openedApples={game.openedApples}
               bankValue={game.bankValue}

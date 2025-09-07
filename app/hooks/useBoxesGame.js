@@ -44,10 +44,39 @@ export function useBoxesGame(
   const [firstClickDone, setFirstClickDone] = useState(false);
   const [isRevealing, setIsRevealing] = useState(false);
   const [collectedAmount, setCollectedAmount] = useState(0);
+  const [bankItUsedSteps, setBankItUsedSteps] = useState([]); // Track which steps used bank it
 
   const [cumulativeBankValues, setCumulativeBankValues] = useState(() =>
     Array(apples).fill(0)
   );
+
+  // Calculate available bank options
+  const availableBankOptions = useMemo(() => {
+    if (openedApples === 0 || mode === "auto") {
+      return [];
+    }
+
+    // Check if current step already used bank it
+    const currentStepUsedBankIt = bankItUsedSteps.includes(openedApples - 1);
+    if (currentStepUsedBankIt) {
+      return [];
+    }
+
+    const currentJackpot = effectiveJackpots[openedApples - 1] || 0;
+    const options = [];
+
+    // First value is 1/4 of the bet
+    let currentValue = bet * 0.25;
+
+    // Generate options while they're less than current jackpot
+    while (currentValue < currentJackpot && options.length < 10) {
+      // limit to prevent infinite options
+      options.push(+currentValue.toFixed(2));
+      currentValue = currentValue * 2; // Double for next option
+    }
+
+    return options;
+  }, [bet, openedApples, effectiveJackpots, bankItUsedSteps, mode]);
 
   const collectAmount = useMemo(() => {
     const banked = bankValues.reduce((a, b) => a + (b || 0), 0);
@@ -73,11 +102,84 @@ export function useBoxesGame(
     setEffectiveJackpots([...jackpotValues]);
     setCumulativeBankValues(Array(apples).fill(0));
     setIsRevealing(false);
+    setBankItUsedSteps([]); // Reset bank it usage for all steps
   };
 
   useEffect(() => {
     resetGame();
   }, [gridSize, worms]);
+
+  // Bank It function with penalty
+  const bankIt = (amount) => {
+    if (openedApples === 0 || mode === "auto") {
+      return false;
+    }
+
+    const currentStepIndex = openedApples - 1;
+
+    // Check if current step already used bank it
+    if (bankItUsedSteps.includes(currentStepIndex)) {
+      return false;
+    }
+
+    const currentJackpot = effectiveJackpots[currentStepIndex] || 0;
+
+    if (amount >= currentJackpot || amount <= 0) {
+      return false; // Can't bank more than current jackpot
+    }
+
+    // Bank it penalty (13% penalty on remaining values)
+    const penaltyRate = 0.13;
+
+    // Update bank values - add the banked amount to current step
+    setBankValues((prev) => {
+      const newBankValues = [...prev];
+      newBankValues[currentStepIndex] = amount;
+      return newBankValues;
+    });
+
+    // Update effective jackpots - subtract banked amount from ALL remaining jackpot values + apply penalty
+    setEffectiveJackpots((prev) => {
+      const newEffective = [...prev];
+
+      // For each remaining jackpot value (current and future)
+      for (let i = currentStepIndex; i < newEffective.length; i++) {
+        if (i === currentStepIndex) {
+          // Current step: subtract the full banked amount
+          newEffective[i] = Math.max(0, newEffective[i] - amount);
+        } else {
+          // Future steps: subtract banked amount + apply penalty
+          const afterSubtraction = Math.max(0, newEffective[i] - amount);
+          newEffective[i] = Math.max(
+            0,
+            +(afterSubtraction * (1 - penaltyRate)).toFixed(2)
+          );
+        }
+      }
+
+      return newEffective;
+    });
+
+    // Update cumulative bank values
+    setCumulativeBankValues((prev) => {
+      const newCumulative = [...prev];
+      const previousTotal =
+        currentStepIndex > 0 ? prev[currentStepIndex - 1] : 0;
+      newCumulative[currentStepIndex] = +(previousTotal + amount).toFixed(2);
+
+      // Update all future cumulative values
+      for (let i = currentStepIndex + 1; i < newCumulative.length; i++) {
+        newCumulative[i] = newCumulative[currentStepIndex];
+      }
+
+      return newCumulative;
+    });
+
+    // Mark this step as having used bank it
+    setBankItUsedSteps((prev) => [...prev, currentStepIndex]);
+
+    return true;
+  };
 
   // ----- Prevent duplicate auto-run in Strict Mode
   const didRunRef = useRef(false);
@@ -255,7 +357,8 @@ export function useBoxesGame(
     collectAmount,
     maxWin,
     cumulativeBankValues,
-    bankIt: () => {},
-    availableBankOptions: [],
+    bankIt, // Now functional with penalty
+    availableBankOptions, // Now provides the calculated options
+    bankItUsedSteps, // Track which steps used bank it
   };
 }
