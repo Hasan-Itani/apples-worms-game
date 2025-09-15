@@ -56,8 +56,11 @@ export default function HomePage() {
         <div className="flex flex-col justify-center items-center order-1 md:order-2 w-full">
           <Boxes
             grid={game.grid}
-            handleClick={game.handleClick}
-            openBoxAuto={game.openBoxAuto} // new
+            handleClick={game.onBoxClick}
+            /* NEW props for auto-shake */
+            currentBoxIndex={game.currentBoxIndex}
+            roundInProgress={game.roundInProgress}
+            /* unchanged below */
             gridSize={game.gridSize}
             worms={game.worms}
             bet={game.bet}
@@ -163,7 +166,7 @@ export default function HomePage() {
                           : "bg-yellow-500 hover:bg-yellow-600"
                       }`}
                     >
-                      Collect: {game.collectAmount.toFixed(2)}
+                      Collect: {game.collectAmount().toFixed(2)}
                     </button>
 
                     <button

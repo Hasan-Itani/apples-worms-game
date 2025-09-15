@@ -1,5 +1,7 @@
 "use client";
 import { useRef, useState, useEffect } from "react";
+import IncDecButton from "./ui/IncDecButton";
+import { nearestStepIndex } from "../utils/nearestStepIndex";
 
 export default function BetControls({
   bet,
@@ -36,19 +38,6 @@ export default function BetControls({
   };
   const stopHold = () => {
     if (intervalRef.current) clearInterval(intervalRef.current);
-  };
-
-  const nearestStepIndex = (arr, value) => {
-    let bestI = 0,
-      bestDiff = Infinity;
-    arr.forEach((v, i) => {
-      const diff = Math.abs(v - value);
-      if (diff < bestDiff) {
-        bestDiff = diff;
-        bestI = i;
-      }
-    });
-    return bestI;
   };
 
   const stepBet = (dir) =>
@@ -106,13 +95,6 @@ export default function BetControls({
   const canIncrement = bankIndex < Math.max(0, availableBankOptions.length - 1);
   const canDecrement = bankIndex > 0;
 
-  const buttonClass =
-    "w-10 h-10 flex items-center justify-center rounded-lg text-lg font-bold text-white " +
-    "bg-[url('/inc-dec-dark-button.png')] bg-cover bg-center " +
-    "hover:bg-[url('/inc-dec-button.png')] active:scale-95 transition " +
-    "disabled:opacity-50 disabled:cursor-not-allowed";
-    
-
   return (
     <div className="p-2 border rounded-lg bg-gradient-to-b from-blue-400 to-blue-200 shadow-md flex flex-col justify-between">
       <div className="flex gap-8">
@@ -124,27 +106,25 @@ export default function BetControls({
               Bet Amount
             </h3>
             <div className="flex items-center gap-3">
-              <button
+              <IncDecButton
                 onPointerDown={() => startHold(() => stepBet(-1))}
                 onPointerUp={stopHold}
                 onPointerLeave={stopHold}
                 disabled={disabled}
-                className={buttonClass}
               >
                 −
-              </button>
+              </IncDecButton>
               <div className="flex-1 text-center text-lg font-bold bg-white rounded-lg py-2 shadow-inner">
                 {bet}
               </div>
-              <button
+              <IncDecButton
                 onPointerDown={() => startHold(() => stepBet(1))}
                 onPointerUp={stopHold}
                 onPointerLeave={stopHold}
                 disabled={disabled}
-                className={buttonClass}
               >
                 +
-              </button>
+              </IncDecButton>
             </div>
           </div>
 
@@ -152,7 +132,7 @@ export default function BetControls({
           <div>
             <h3 className="text-sm text-gray-600 font-medium mb-1">Worms</h3>
             <div className="flex items-center gap-3">
-              <button
+              <IncDecButton
                 onPointerDown={() =>
                   startHold(() =>
                     setWorms((prev) => Math.max(minWorms, prev - 1))
@@ -161,14 +141,13 @@ export default function BetControls({
                 onPointerUp={stopHold}
                 onPointerLeave={stopHold}
                 disabled={disabled}
-                className={buttonClass}
               >
                 −
-              </button>
+              </IncDecButton>
               <div className="flex-1 text-center text-lg font-bold bg-white rounded-lg py-2 shadow-inner">
                 {worms}
               </div>
-              <button
+              <IncDecButton
                 onPointerDown={() =>
                   startHold(() =>
                     setWorms((prev) => Math.min(maxWorms, prev + 1))
@@ -177,10 +156,9 @@ export default function BetControls({
                 onPointerUp={stopHold}
                 onPointerLeave={stopHold}
                 disabled={disabled}
-                className={buttonClass}
               >
                 +
-              </button>
+              </IncDecButton>
             </div>
           </div>
 
@@ -198,89 +176,82 @@ export default function BetControls({
 
         {/* RIGHT SIDE */}
         <div className="flex flex-col gap-6 flex-1">
-          {/* Bank It */}
+          {/* Bank It / Auto Rounds */}
           {mode === "manual" ? (
             <div>
               <h3 className="text-sm text-gray-600 font-medium mb-1">
                 Bank It
               </h3>
               <div className="flex items-center gap-3">
-                <button
+                <IncDecButton
                   disabled={!canDecrement || openedApples === 0}
                   onClick={() => selectBank(bankIndex - 1)}
-                  className={buttonClass}
                 >
                   −
-                </button>
+                </IncDecButton>
                 <div className="flex-1 text-center text-lg font-bold bg-white rounded-lg py-2 shadow-inner">
                   {availableBankOptions.length > 0
                     ? availableBankOptions[bankIndex]
                     : "0.00"}
                 </div>
-                <button
+                <IncDecButton
                   disabled={!canIncrement || openedApples === 0}
                   onClick={() => selectBank(bankIndex + 1)}
-                  className={buttonClass}
                 >
                   +
-                </button>
+                </IncDecButton>
               </div>
             </div>
           ) : (
             <div>
-            <h3 className="text-sm text-gray-600 font-medium mb-1">
-              Auto Rounds
-            </h3>
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => stepRounds(-1)}
-                disabled={disabled}
-                className={buttonClass}
-              >
-                −
-              </button>
-              <div className="flex-1 text-center text-lg font-bold bg-white rounded-lg py-2 shadow-inner">
-                {rounds}
+              <h3 className="text-sm text-gray-600 font-medium mb-1">
+                Auto Rounds
+              </h3>
+              <div className="flex items-center gap-3">
+                <IncDecButton
+                  onClick={() => stepRounds(-1)}
+                  disabled={disabled}
+                >
+                  −
+                </IncDecButton>
+                <div className="flex-1 text-center text-lg font-bold bg-white rounded-lg py-2 shadow-inner">
+                  {rounds}
+                </div>
+                <IncDecButton onClick={() => stepRounds(1)} disabled={disabled}>
+                  +
+                </IncDecButton>
               </div>
+            </div>
+          )}
+
+          {/* Mode */}
+          <div>
+            <h3 className="text-sm text-gray-600 font-medium mb-1">Mode</h3>
+            <div className="flex gap-2">
               <button
-                onClick={() => stepRounds(1)}
+                onClick={() => setMode("manual")}
                 disabled={disabled}
-                className={buttonClass}
+                className={`flex-1 py-2 rounded-lg font-medium border-3 transition ${
+                  mode === "manual"
+                    ? "bg-blue-500 text-white border-black shadow"
+                    : "bg-slate-300 hover:bg-slate-400"
+                }`}
               >
-                +
+                Manual
+              </button>
+              <button
+                onClick={() => setMode("auto")}
+                disabled={disabled}
+                className={`flex-1 py-2 rounded-lg font-medium border-3 transition ${
+                  mode === "auto"
+                    ? "bg-blue-500 text-white border-black shadow"
+                    : "bg-slate-300 hover:bg-slate-400"
+                }`}
+              >
+                Auto
               </button>
             </div>
           </div>
-          )}
-
-          {/* Mode toggle */}
-          <div>
-          <h3 className="text-sm text-gray-600 font-medium mb-1">Mode</h3>
-          <div className="flex gap-2">
-            <button
-              onClick={() => setMode("manual")}
-              disabled={disabled}
-              className={`flex-1 py-2 rounded-lg font-medium border-3 transition ${
-                mode === "manual"
-                  ? "bg-blue-500 text-white border-black shadow"
-                  : "bg-slate-300 hover:bg-slate-400"
-              }`}
-            >
-              Manual
-            </button>
-            <button
-              onClick={() => setMode("auto")}
-              disabled={disabled}
-              className={`flex-1 py-2 rounded-lg font-medium border-3 transition ${
-                mode === "auto"
-                  ? "bg-blue-500 text-white border-black shadow"
-                  : "bg-slate-300 hover:bg-slate-400"
-              }`}
-            >
-              Auto
-            </button>
-          </div>
-        </div>
 
           {/* Grid Size */}
           <div>

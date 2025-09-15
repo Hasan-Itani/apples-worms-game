@@ -1,5 +1,7 @@
 "use client";
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo } from "react";
+import { computeBaseJackpotValues } from "../utils/jackpots";
+import { BANK_PENALTY_RATE } from "../utils/constants";
 
 export function useBoxesGame(
   gridSize = 4,
@@ -23,18 +25,8 @@ export function useBoxesGame(
 
   // ---- base jackpot values
   const jackpotValues = useMemo(() => {
-    const rarityFactor = 1 + (worms / totalBoxes) * 4;
-    const minGrowth = 1.02;
-    const maxGrowth = 1.5;
-    return Array.from({ length: apples }, (_, i) => {
-      const denom = Math.max(apples - 1, 1);
-      const progress = i / denom;
-      const dynamicGrowth =
-        minGrowth + (maxGrowth - minGrowth) * (progress * progress);
-      const value = bet * rarityFactor * Math.pow(dynamicGrowth, i);
-      return +value.toFixed(2);
-    });
-  }, [bet, worms, totalBoxes, apples]);
+    return computeBaseJackpotValues(bet, worms, gridSize).values;
+  }, [bet, worms, gridSize]);
 
   const [effectiveJackpots, setEffectiveJackpots] = useState([]);
   const [bankValues, setBankValues] = useState(() => Array(apples).fill(0));
@@ -44,53 +36,26 @@ export function useBoxesGame(
   const [firstClickDone, setFirstClickDone] = useState(false);
   const [isRevealing, setIsRevealing] = useState(false);
   const [collectedAmount, setCollectedAmount] = useState(0);
-  const [bankItUsedSteps, setBankItUsedSteps] = useState([]); // Track which steps used bank it
+  const [bankItUsedSteps, setBankItUsedSteps] = useState([]);
 
   const [cumulativeBankValues, setCumulativeBankValues] = useState(() =>
     Array(apples).fill(0)
   );
-
-  // Calculate available bank options
-  const availableBankOptions = useMemo(() => {
-    if (openedApples === 0 || mode === "auto") {
-      return [];
-    }
-
-    // Check if current step already used bank it
-    const currentStepUsedBankIt = bankItUsedSteps.includes(openedApples - 1);
-    if (currentStepUsedBankIt) {
-      return [];
-    }
-
-    const currentJackpot = effectiveJackpots[openedApples - 1] || 0;
-    const options = [];
-
-    // First value is 1/4 of the bet
-    let currentValue = bet * 0.25;
-
-    // Generate options while they're less than current jackpot
-    while (currentValue < currentJackpot && options.length < 10) {
-      // limit to prevent infinite options
-      options.push(+currentValue.toFixed(2));
-      currentValue = currentValue * 2; // Double for next option
-    }
-
-    return options;
-  }, [bet, openedApples, effectiveJackpots, bankItUsedSteps, mode]);
-
-  const collectAmount = useMemo(() => {
-    const banked = bankValues.reduce((a, b) => a + (b || 0), 0);
-    const lastJackpot =
-      openedApples > 0 ? effectiveJackpots[openedApples - 1] || 0 : 0;
-    return +(banked + lastJackpot).toFixed(2);
-  }, [bankValues, effectiveJackpots, openedApples]);
 
   const generateBombs = (count) => {
     const positions = new Set();
     while (positions.size < count) {
       positions.add(Math.floor(Math.random() * totalBoxes));
     }
-    return [...positions];
+    return Array.from(positions);
+  };
+
+  const revealAllBoxes = (newGrid, bombsSet) => {
+    for (let i = 0; i < totalBoxes; i++) {
+      if (newGrid[i] !== "❓") continue;
+      newGrid[i] = bombsSet.includes(i) ? "💣" : "🍎";
+    }
+    setGrid([...newGrid]);
   };
 
   const resetGame = () => {
@@ -102,159 +67,173 @@ export function useBoxesGame(
     setEffectiveJackpots([...jackpotValues]);
     setCumulativeBankValues(Array(apples).fill(0));
     setIsRevealing(false);
-    setBankItUsedSteps([]); // Reset bank it usage for all steps
+    setBankItUsedSteps([]);
   };
 
   useEffect(() => {
     resetGame();
-  }, [gridSize, worms]);
+  }, [gridSize, worms]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Bank It function with penalty
-  const bankIt = (amount) => {
-    if (openedApples === 0 || mode === "auto") {
-      return false;
-    }
+  // ====== Bank It (manual only) ======
+  const availableBankOptions = useMemo(() => {
+    if (openedApples === 0 || mode === "auto") return [];
 
     const currentStepIndex = openedApples - 1;
-
-    // Check if current step already used bank it
-    if (bankItUsedSteps.includes(currentStepIndex)) {
-      return false;
-    }
+    if (bankItUsedSteps.includes(currentStepIndex)) return [];
 
     const currentJackpot = effectiveJackpots[currentStepIndex] || 0;
+    const options = [];
 
-    if (amount >= currentJackpot || amount <= 0) {
-      return false; // Can't bank more than current jackpot
-    }
+    options.push(+(bet / 4).toFixed(2));
+    const halfJackpot = Math.max(0, +(currentJackpot / 2).toFixed(2));
+    options.push(Math.min(halfJackpot, currentJackpot));
+    const progressive = Math.min(
+      currentJackpot,
+      +(bet * openedApples).toFixed(2)
+    );
+    options.push(progressive);
 
-    // Bank it penalty (13% penalty on remaining values)
-    const penaltyRate = 0.13;
+    const uniq = Array.from(new Set(options)).filter(
+      (v) => v > 0 && v < currentJackpot
+    );
+    return uniq.sort((a, b) => a - b);
+  }, [openedApples, mode, effectiveJackpots, bet, bankItUsedSteps]);
 
-    // Update bank values - add the banked amount to current step
+  const maxWin = useMemo(() => {
+    const banked = bankValues.reduce((a, b) => a + (Number(b) || 0), 0);
+    const remainingMax =
+      effectiveJackpots.length > 0
+        ? Math.max(0, ...effectiveJackpots.map((v) => Number(v) || 0))
+        : 0;
+    return +(banked + remainingMax).toFixed(2);
+  }, [bankValues, effectiveJackpots]);
+
+  const bankIt = (amount) => {
+    if (openedApples === 0 || mode === "auto") return false;
+
+    const currentStepIndex = openedApples - 1;
+    if (bankItUsedSteps.includes(currentStepIndex)) return false;
+
+    const currentJackpot = effectiveJackpots[currentStepIndex] || 0;
+    if (amount >= currentJackpot || amount <= 0) return false;
+
+    const penaltyRate = BANK_PENALTY_RATE;
+
     setBankValues((prev) => {
       const newBankValues = [...prev];
       newBankValues[currentStepIndex] = amount;
       return newBankValues;
     });
 
-    // Update effective jackpots - subtract banked amount from ALL remaining jackpot values + apply penalty
     setEffectiveJackpots((prev) => {
-      const newEffective = [...prev];
-
-      // For each remaining jackpot value (current and future)
-      for (let i = currentStepIndex; i < newEffective.length; i++) {
+      const next = [...prev];
+      for (let i = currentStepIndex; i < next.length; i++) {
         if (i === currentStepIndex) {
-          // Current step: subtract the full banked amount
-          newEffective[i] = Math.max(0, newEffective[i] - amount);
+          next[i] = Math.max(0, next[i] - amount);
         } else {
-          // Future steps: subtract banked amount + apply penalty
-          const afterSubtraction = Math.max(0, newEffective[i] - amount);
-          newEffective[i] = Math.max(
-            0,
-            +(afterSubtraction * (1 - penaltyRate)).toFixed(2)
-          );
+          const afterSub = Math.max(0, next[i] - amount);
+          next[i] = Math.max(0, +(afterSub * (1 - penaltyRate)).toFixed(2));
         }
       }
-
-      return newEffective;
+      return next;
     });
 
-    // Update cumulative bank values
     setCumulativeBankValues((prev) => {
-      const newCumulative = [...prev];
-      const previousTotal =
-        currentStepIndex > 0 ? prev[currentStepIndex - 1] : 0;
-      newCumulative[currentStepIndex] = +(previousTotal + amount).toFixed(2);
-
-      // Update all future cumulative values
-      for (let i = currentStepIndex + 1; i < newCumulative.length; i++) {
-        newCumulative[i] = newCumulative[currentStepIndex];
+      const out = [...prev];
+      const prevTotal = currentStepIndex > 0 ? prev[currentStepIndex - 1] : 0;
+      out[currentStepIndex] = +(prevTotal + amount).toFixed(2);
+      for (let i = currentStepIndex + 1; i < out.length; i++) {
+        out[i] = out[currentStepIndex];
       }
-
-      return newCumulative;
+      return out;
     });
 
-    // Mark this step as having used bank it
     setBankItUsedSteps((prev) => [...prev, currentStepIndex]);
-
     return true;
   };
 
-  // ----- Prevent duplicate auto-run in Strict Mode
-  const didRunRef = useRef(false);
+  // Manual collect
+  const collectApples = () => {
+    if (!firstClickDone || isRevealing) return;
+    const banked = bankValues.reduce((a, b) => a + (Number(b) || 0), 0);
+    const current =
+      openedApples > 0 ? effectiveJackpots[openedApples - 1] || 0 : 0;
+    const total = +(banked + current).toFixed(2);
+    setCollectedAmount(total);
 
-  // Auto start new round
-  useEffect(() => {
-    if (
-      mode === "auto" &&
-      autoGameActive &&
-      !roundInProgress &&
-      selectedBoxes.length > 0
-    ) {
-      if (didRunRef.current) return;
-      didRunRef.current = true;
+    const newGrid = [...grid];
+    revealAllBoxes(newGrid, bombs);
+    setIsRevealing(true);
 
-      console.log("Starting new auto round...");
-      setRoundInProgress(true);
-      setCurrentBoxIndex(0);
+    setTimeout(() => {
+      stopManualGame();
       resetGame();
-      setFirstClickDone(true);
+      setFirstClickDone(false);
+    }, 1000);
 
-      setTimeout(() => {
-        didRunRef.current = false;
-      }, 0);
-    }
-  }, [mode, autoGameActive, roundInProgress, selectedBoxes.length]);
+    return total;
+  };
 
-  // Auto-play sequential box opening
+  // Auto compute collect value
+  const collectAmount = () => {
+    const banked = bankValues.reduce((a, b) => a + (Number(b) || 0), 0);
+    const current =
+      openedApples > 0 ? effectiveJackpots[openedApples - 1] || 0 : 0;
+    return +(banked + current).toFixed(2);
+  };
+
+  // ====== AUTO: stepping, end-of-sequence, and round advance ======
   useEffect(() => {
-    if (
-      mode === "auto" &&
-      roundInProgress &&
-      autoGameActive &&
-      selectedBoxes.length > 0
-    ) {
-      const timer = setTimeout(() => {
-        if (currentBoxIndex >= selectedBoxes.length) {
-          onLoss(collectAmount);
-          setTimeout(() => nextRound(maxRounds), 1000);
-          return;
-        }
+    if (!autoGameActive || mode !== "auto") return;
+    if (!roundInProgress) return;
 
-        const boxIndex = selectedBoxes[currentBoxIndex];
-        console.log(
-          `Opening box ${currentBoxIndex + 1}/${
-            selectedBoxes.length
-          } at index ${boxIndex}`
-        );
+    // End-of-sequence (all chosen boxes opened) or all apples opened
+    if (currentBoxIndex >= selectedBoxes.length || openedApples >= apples) {
+      const payout = collectAmount();
+      onLoss(payout); // report result (win if >0)
+      setRoundInProgress(false);
+      setTimeout(() => {
+        resetGame(); // prepare clean grid/bombs
+        nextRound(maxRounds); // arm next round
+      }, 800);
+      return;
+    }
 
-        if (grid[boxIndex] === "❓") {
-          const newGrid = [...grid];
+    const timer = setTimeout(() => {
+      const boxIndex = selectedBoxes[currentBoxIndex];
 
-          if (bombs.includes(boxIndex)) {
-            newGrid[boxIndex] = "💣";
-            setGrid(newGrid);
-            const banked = bankValues.reduce((a, b) => a + (Number(b) || 0), 0);
-            onLoss(banked);
-            setTimeout(() => nextRound(maxRounds), 800);
-          } else {
-            newGrid[boxIndex] = "🍎";
-            setGrid(newGrid);
-            setOpenedApples((prev) => prev + 1);
-            setCurrentBoxIndex((prev) => prev + 1);
-          }
+      if (grid[boxIndex] === "❓") {
+        const newGrid = [...grid];
+
+        if (bombs.includes(boxIndex)) {
+          // Hit bomb -> finish round (keep banked)
+          newGrid[boxIndex] = "💣";
+          setGrid(newGrid);
+          const banked = bankValues.reduce((a, b) => a + (Number(b) || 0), 0);
+          onLoss(banked);
+          setRoundInProgress(false);
+          setTimeout(() => {
+            resetGame();
+            nextRound(maxRounds);
+          }, 800);
         } else {
+          // Apple -> continue
+          newGrid[boxIndex] = "🍎";
+          setGrid(newGrid);
+          setOpenedApples((prev) => prev + 1);
           setCurrentBoxIndex((prev) => prev + 1);
         }
-      }, 800);
+      } else {
+        // Already revealed (shouldn't happen in auto), just step forward
+        setCurrentBoxIndex((prev) => prev + 1);
+      }
+    }, 800);
 
-      return () => clearTimeout(timer);
-    }
+    return () => clearTimeout(timer);
   }, [
+    autoGameActive,
     mode,
     roundInProgress,
-    autoGameActive,
     currentBoxIndex,
     selectedBoxes,
     grid,
@@ -263,102 +242,89 @@ export function useBoxesGame(
     onLoss,
     nextRound,
     maxRounds,
-    collectAmount,
+    setCurrentBoxIndex,
+    openedApples,
+    apples,
+    setRoundInProgress,
   ]);
 
-  const revealAllBoxes = (newGrid, bombsList) => {
-    const finalGrid = newGrid.map((cell, i) => {
-      if (cell !== "❓") return cell;
-      return bombsList.includes(i) ? "💣" : "🍎";
-    });
-    setGrid(finalGrid);
-  };
+  // Manual click
+  const onBoxClick = (index) => {
+    if (mode !== "manual") return;
+    if (isRevealing) return;
+    if (grid[index] !== "❓") return;
 
-  const collectApples = () => {
-    const payout =
-      (bankValues.reduce((a, b) => a + (b || 0), 0) || 0) +
-      (openedApples > 0 ? effectiveJackpots[openedApples - 1] || 0 : 0);
+    if (!firstClickDone) setFirstClickDone(true);
 
-    setCollectedAmount(payout);
-
-    if (mode === "manual") {
+    const newGrid = [...grid];
+    if (bombs.includes(index)) {
+      newGrid[index] = "💣";
+      setGrid(newGrid);
       setIsRevealing(true);
-      revealAllBoxes([...grid], bombs);
-      setTimeout(() => {
-        resetGame();
-      }, 3000);
-    }
+      revealAllBoxes(newGrid, bombs);
 
-    return payout;
+      setTimeout(() => {
+        const banked = bankValues.reduce((a, b) => a + (Number(b) || 0), 0);
+        onLoss(banked);
+        stopManualGame();
+        resetGame();
+        setFirstClickDone(false);
+      }, 1000);
+    } else {
+      newGrid[index] = "🍎";
+      setGrid(newGrid);
+      setOpenedApples((prev) => {
+        const newOpened = prev + 1;
+        if (newOpened >= apples) {
+          setIsRevealing(true);
+          revealAllBoxes(newGrid, bombs);
+          setTimeout(() => {
+            const payout =
+              bankValues.reduce((a, b) => a + (b || 0), 0) +
+              (effectiveJackpots[newOpened - 1] || 0);
+            onLoss(payout);
+            stopManualGame();
+            resetGame();
+            setFirstClickDone(false);
+          }, 1000);
+        }
+        return newOpened;
+      });
+    }
   };
 
-  const maxWin = useMemo(() => {
-    if (!effectiveJackpots?.length) return 0;
-    return Math.max(...effectiveJackpots);
-  }, [effectiveJackpots]);
+  // Update jackpots when base changes
+  useEffect(() => {
+    setEffectiveJackpots([...jackpotValues]);
+  }, [jackpotValues]);
+
+  const currentJackpot =
+    openedApples > 0
+      ? Math.max(0, +effectiveJackpots[openedApples - 1].toFixed(2))
+      : "0.00";
 
   return {
     grid,
-    handleClick: (index) => {
-      if (mode === "auto") return;
-
-      if (!manualRunning || isRevealing) return;
-      if (grid[index] !== "❓") return;
-
-      if (!firstClickDone) setFirstClickDone(true);
-
-      const newGrid = [...grid];
-      if (bombs.includes(index)) {
-        newGrid[index] = "💣";
-        setGrid(newGrid);
-        setIsRevealing(true);
-        revealAllBoxes(newGrid, bombs);
-
-        setTimeout(() => {
-          const banked = bankValues.reduce((a, b) => a + (Number(b) || 0), 0);
-          onLoss(banked);
-          stopManualGame();
-          resetGame();
-          setFirstClickDone(false);
-        }, 1000);
-      } else {
-        newGrid[index] = "🍎";
-        setGrid(newGrid);
-        setOpenedApples((prev) => {
-          const newOpened = prev + 1;
-          if (newOpened >= apples) {
-            setIsRevealing(true);
-            revealAllBoxes(newGrid, bombs);
-            setTimeout(() => {
-              const payout =
-                bankValues.reduce((a, b) => a + (b || 0), 0) +
-                (effectiveJackpots[newOpened - 1] || 0);
-              onLoss(payout);
-              stopManualGame();
-              resetGame();
-              setFirstClickDone(false);
-            }, 1000);
-          }
-          return newOpened;
-        });
-      }
-    },
+    bombs,
+    apples,
+    totalBoxes,
+    onBoxClick,
     resetGame,
     openedApples,
+    isRevealing,
+    firstClickDone,
     jackpotValues,
     effectiveJackpots,
     bankValues,
-    currentJackpot:
-      openedApples > 0
-        ? Math.max(0, +effectiveJackpots[openedApples - 1].toFixed(2))
-        : "0.00",
+    setBankValues,
+    currentJackpot,
     collectApples,
     collectedAmount,
     collectAmount,
     maxWin,
     cumulativeBankValues,
-    bankIt, // Now functional with penalty
-    availableBankOptions, // Now provides the calculated options
-    bankItUsedSteps, // Track which steps used bank it
+    bankIt,
+    availableBankOptions,
+    bankItUsedSteps,
   };
 }

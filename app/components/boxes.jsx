@@ -1,10 +1,10 @@
-// components/Boxes.js
+// app/components/Boxes.jsx
 "use client";
 
 import Jackpot from "./JackpotBar";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useMemo } from "react";
 
 export default function Boxes({
   grid,
@@ -24,6 +24,9 @@ export default function Boxes({
   selectedBoxes,
   setSelectedBoxes,
   gameActive,
+  // auto shake props
+  currentBoxIndex,
+  roundInProgress,
 }) {
   const [showPopup, setShowPopup] = useState(false);
   const [revealAll, setRevealAll] = useState(false);
@@ -51,12 +54,9 @@ export default function Boxes({
 
   // Clear selections when switching modes
   useEffect(() => {
-    if (mode === "manual") {
-      setSelectedBoxes([]);
-    }
+    if (mode === "manual") setSelectedBoxes([]);
   }, [mode, setSelectedBoxes]);
 
-  // Close popup
   const handleClosePopup = () => {
     setShowPopup(false);
     setRevealAll(false);
@@ -77,7 +77,6 @@ export default function Boxes({
       handleBoxSelection(index);
       return;
     }
-
     if (!manualRunning) return;
     if (shakingIndex !== null) return;
     if (revealedIndexes.includes(index)) return;
@@ -90,6 +89,24 @@ export default function Boxes({
       handleClick(index);
     }, 350);
   };
+
+  // ===== Auto: which box should shake now? =====
+  const autoShakingIndex = useMemo(() => {
+    if (
+      mode !== "auto" ||
+      !gameActive ||
+      !roundInProgress ||
+      !Array.isArray(selectedBoxes) ||
+      selectedBoxes.length === 0
+    )
+      return null;
+
+    const step = Math.min(
+      Math.max(0, currentBoxIndex || 0),
+      selectedBoxes.length - 1
+    );
+    return selectedBoxes[step] ?? null;
+  }, [mode, gameActive, roundInProgress, selectedBoxes, currentBoxIndex]);
 
   return (
     <div className="flex flex-col items-center gap-6 w-full">
@@ -104,8 +121,8 @@ export default function Boxes({
       />
 
       {mode === "auto" && !gameActive && (
-        <div className="text-center text-sm -mt-text-gray-700">
-          Select {selectedBoxes.length} boxes to open automatically
+        <div className="text-center text-sm text-gray-700">
+          Tap boxes to set the auto-open order
         </div>
       )}
 
@@ -118,13 +135,21 @@ export default function Boxes({
           {grid.map((cell, index) => {
             const isRevealed =
               revealAll || revealedIndexes.includes(index) || cell !== "❓";
+
             const isDisabled =
               (mode === "manual" &&
                 (!manualRunning ||
                   isRevealed ||
                   (shakingIndex !== null && shakingIndex !== index))) ||
               (mode === "auto" && gameActive);
+
             const isSelected = mode === "auto" && selectedBoxes.includes(index);
+
+            const isShaking =
+              shakingIndex === index || autoShakingIndex === index;
+
+            // order label (1-based)
+            const order = isSelected ? selectedBoxes.indexOf(index) + 1 : null;
 
             return (
               <motion.div
@@ -132,9 +157,9 @@ export default function Boxes({
                 onClick={() => handleBoxClickLocal(index)}
                 className={`relative flex items-center justify-center cursor-pointer ${
                   isDisabled ? "pointer-events-none opacity-60" : ""
-                } ${isSelected ? "ring-4 ring-blue-500 ring-opacity-70" : ""}`}
+                }`}
                 animate={
-                  shakingIndex === index
+                  isShaking
                     ? {
                         x: [0, -8, 8, -6, 6, 0],
                         rotate: [0, -8, 8, -6, 6, 0],
@@ -142,7 +167,21 @@ export default function Boxes({
                       }
                     : { x: 0, rotate: 0, scale: 1 }
                 }
-                transition={{ duration: 0.35 }}
+                transition={
+                  isShaking
+                    ? {
+                        duration:
+                          mode === "auto" && autoShakingIndex === index
+                            ? 0.8
+                            : 0.35,
+                        repeat:
+                          mode === "auto" && autoShakingIndex === index
+                            ? Infinity
+                            : 0,
+                        repeatType: "loop",
+                      }
+                    : { duration: 0.2 }
+                }
               >
                 <Image
                   src="/box.png"
@@ -151,13 +190,14 @@ export default function Boxes({
                   className="object-contain select-none pointer-events-none"
                 />
 
-                {/* Auto selection indicator */}
-                {isSelected && (
-                  <div className="absolute -top-1 -right-1 w-6 h-6 bg-blue-500 text-white rounded-full flex items-center justify-center text-xs font-bold">
-                    {selectedBoxes.indexOf(index) + 1}
+                {/* Selected order badge (no borders/rings) */}
+                {order && (
+                  <div className="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-blue-600 text-white text-xs font-bold flex items-center justify-center shadow">
+                    {order}
                   </div>
                 )}
 
+                {/* Revealed content */}
                 {isRevealed && cell !== "❓" && (
                   <div className="absolute w-3/4 h-3/4">
                     {cell === "🍎" && (

@@ -1,6 +1,7 @@
 "use client";
 
 import { motion, AnimatePresence, useMotionValue } from "framer-motion";
+import { computeBaseJackpotValues } from "../utils/jackpots";
 import {
   useRef,
   useState,
@@ -14,10 +15,10 @@ export default function JackpotBar({
   gridSize,
   worms,
   bet,
-  openedApples,
-  jackpotValues: jackpotValuesProp, 
+  jackpotValues: jackpotValuesProp,
   effectiveJackpotValues: effectiveJackpotValuesProp,
-  bankValues = [], 
+  bankValues,
+  openedApples = 0,
 }) {
   const containerRef = useRef(null);
   const topContentRef = useRef(null);
@@ -36,19 +37,8 @@ export default function JackpotBar({
     ) {
       return jackpotValuesProp.map((v) => +v);
     }
-    const rarityFactor = 1 + (worms / totalBoxes) * 4;
-    const minGrowth = 1.02;
-    const maxGrowth = 1.5;
-
-    return Array.from({ length: apples }, (_, i) => {
-      const denom = Math.max(apples - 1, 1);
-      const progress = i / denom;
-      const dynamicGrowth =
-        minGrowth + (maxGrowth - minGrowth) * (progress * progress);
-      const value = bet * rarityFactor * Math.pow(dynamicGrowth, i);
-      return +value.toFixed(2);
-    });
-  }, [bet, worms, totalBoxes, apples, jackpotValuesProp]);
+    return computeBaseJackpotValues(bet, worms, gridSize).values;
+  }, [bet, worms, gridSize, apples, jackpotValuesProp]);
 
   const bankValuesNormalized = useMemo(() => {
     if (!Array.isArray(bankValues)) return Array(apples).fill(0);
@@ -76,13 +66,22 @@ export default function JackpotBar({
   ]);
 
   const recalc = useCallback(() => {
-    const cw = containerRef.current?.offsetWidth ?? 0;
-    const sw = topContentRef.current?.scrollWidth ?? 0;
-    const min = Math.min(0, cw - sw);
-    setBounds({ min, max: 0 });
-    const cur = x.get();
-    const clamped = Math.max(min, Math.min(cur, 0));
-    if (clamped !== cur) x.set(clamped);
+    const wrap = containerRef.current;
+    const content = topContentRef.current;
+    if (!wrap || !content) return;
+
+    const wrapW = wrap.clientWidth;
+    const contentW = content.scrollWidth;
+
+    if (contentW <= wrapW) {
+      setBounds({ min: 0, max: 0 });
+      x.set(0);
+    } else {
+      setBounds({ min: wrapW - contentW, max: 0 });
+      const cur = x.get();
+      if (cur > 0) x.set(0);
+      if (cur < wrapW - contentW) x.set(wrapW - contentW);
+    }
   }, [x]);
 
   useLayoutEffect(() => {
@@ -90,19 +89,11 @@ export default function JackpotBar({
   }, [recalc, effectiveValues.length]);
 
   useEffect(() => {
-    let ro;
-    if (typeof ResizeObserver !== "undefined") {
-      ro = new ResizeObserver(() => recalc());
-      if (containerRef.current) ro.observe(containerRef.current);
-      if (topContentRef.current) ro.observe(topContentRef.current);
-      if (botContentRef.current) ro.observe(botContentRef.current);
-    }
     const onResize = () => recalc();
     window.addEventListener("resize", onResize);
-    const t = setTimeout(recalc, 350);
+    const t = setTimeout(recalc, 0);
     return () => {
       window.removeEventListener("resize", onResize);
-      if (ro) ro.disconnect();
       clearTimeout(t);
     };
   }, [recalc, effectiveValues.length, openedApples]);
@@ -145,22 +136,25 @@ export default function JackpotBar({
           }}
         >
           <AnimatePresence initial={false}>
-            {effectiveValues.map((amount, i) => (
-              <motion.div
-                key={`eff-${i}`}
-                variants={itemVariants}
-                initial="hidden"
-                animate="visible"
-                exit="exit"
-                transition={{ duration: 0.16 }}
-                className={`flex-shrink-0 w-16 h-12 rounded-lg shadow-md flex items-center justify-center font-bold text-sm ${itemClass(
-                  i,
-                  i === openedApples - 1
-                )}`}
-              >
-                €{amount.toFixed(2)}
-              </motion.div>
-            ))}
+            {effectiveValues.map((amount, i) => {
+              const isCurrent = i === Math.max(0, openedApples - 1);
+              return (
+                <motion.div
+                  key={`eff-${i}`}
+                  variants={itemVariants}
+                  initial="hidden"
+                  animate="visible"
+                  exit="exit"
+                  transition={{ type: "spring", stiffness: 300, damping: 25 }}
+                  className={`min-w-[88px] px-3 py-2 rounded-lg text-center text-sm font-bold border ${itemClass(
+                    i,
+                    isCurrent
+                  )}`}
+                >
+                  €{amount.toFixed(2)}
+                </motion.div>
+              );
+            })}
           </AnimatePresence>
         </motion.div>
       </div>
@@ -194,8 +188,8 @@ export default function JackpotBar({
                 initial="hidden"
                 animate="visible"
                 exit="exit"
-                transition={{ duration: 0.16 }}
-                className={`flex-shrink-0 w-16 h-8 rounded-lg shadow-inner flex items-center justify-center text-xs font-bold ${
+                transition={{ type: "spring", stiffness: 300, damping: 25 }}
+                className={`min-w-[88px] px-3 py-2 rounded-lg text-center text-sm font-bold border ${
                   amount > 0
                     ? "bg-blue-600 text-white"
                     : "bg-gray-200 text-gray-600"
