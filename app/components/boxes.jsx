@@ -1,4 +1,3 @@
-// app/components/Boxes.jsx
 "use client";
 
 import Jackpot from "./JackpotBar";
@@ -24,7 +23,6 @@ export default function Boxes({
   selectedBoxes,
   setSelectedBoxes,
   gameActive,
-  // auto shake props
   currentBoxIndex,
   roundInProgress,
 }) {
@@ -32,6 +30,7 @@ export default function Boxes({
   const [revealAll, setRevealAll] = useState(false);
   const [shakingIndex, setShakingIndex] = useState(null);
   const [revealedIndexes, setRevealedIndexes] = useState([]);
+  const [explodingIndexes, setExplodingIndexes] = useState([]); // 👈 для взрывов
   const prevManualRunningRef = useRef(manualRunning);
 
   // Show popup and reveal all when gameOver triggers
@@ -48,6 +47,7 @@ export default function Boxes({
       setRevealedIndexes([]);
       setShakingIndex(null);
       setRevealAll(false);
+      setExplodingIndexes([]);
     }
     prevManualRunningRef.current = manualRunning;
   }, [manualRunning]);
@@ -83,6 +83,13 @@ export default function Boxes({
     if (grid[index] !== "❓") return;
 
     setShakingIndex(index);
+
+    // Включаем взрыв
+    setExplodingIndexes((prev) => [...prev, index]);
+    setTimeout(() => {
+      setExplodingIndexes((prev) => prev.filter((i) => i !== index));
+    }, 600);
+
     setTimeout(() => {
       setShakingIndex(null);
       setRevealedIndexes((prev) => [...prev, index]);
@@ -120,8 +127,6 @@ export default function Boxes({
         bankValues={bankValues}
       />
 
- 
-
       <div className="relative w-full max-w-md aspect-square">
         {/* grid */}
         <div
@@ -144,15 +149,16 @@ export default function Boxes({
             const isShaking =
               shakingIndex === index || autoShakingIndex === index;
 
-            // order label (1-based)
             const order = isSelected ? selectedBoxes.indexOf(index) + 1 : null;
+
+            const isExploding = explodingIndexes.includes(index);
 
             return (
               <motion.div
                 key={index}
                 onClick={() => handleBoxClickLocal(index)}
                 className={`relative flex items-center justify-center cursor-pointer ${
-                  isDisabled ? "pointer-events-none opacity-60" : ""
+                  isDisabled ? "pointer-events-none" : ""
                 }`}
                 animate={
                   isShaking
@@ -186,14 +192,14 @@ export default function Boxes({
                   className="object-contain select-none pointer-events-none"
                 />
 
-                {/* Selected order badge (no borders/rings) */}
+                {/* Order badge */}
                 {order && (
                   <div className="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-blue-600 text-white text-xs font-bold flex items-center justify-center shadow">
                     {order}
                   </div>
                 )}
 
-                {/* Revealed content */}
+                {/* Content */}
                 {isRevealed && cell !== "❓" && (
                   <div className="absolute w-3/4 h-3/4">
                     {cell === "🍎" && (
@@ -212,6 +218,13 @@ export default function Boxes({
                         className="object-contain"
                       />
                     )}
+                  </div>
+                )}
+
+                {/* Взрыв */}
+                {isExploding && (
+                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                    <div className="explosion" />
                   </div>
                 )}
               </motion.div>

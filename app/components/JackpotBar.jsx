@@ -106,9 +106,9 @@ export default function JackpotBar({
 
   const itemClass = (i, current) => {
     if (current)
-      return "bg-yellow-500 text-white border-2 border-yellow-700 animate-pulse";
-    if (i < openedApples - 1) return "bg-green-600 text-white";
-    return "bg-gray-300 text-gray-700";
+      return "text-[20px] bg-orange-500 text-white border-2 border-yellow-700";
+    if (i < openedApples - 1) return "bg-black text-white text-[20px]";
+    return "bg-black text-white text-[20px]";
   };
 
   return (
@@ -120,7 +120,10 @@ export default function JackpotBar({
       </div>
 
       {/* TOP (effective jackpots) */}
-      <div ref={containerRef} className="w-full overflow-hidden relative">
+      <div
+        ref={containerRef}
+        className="w-full overflow-hidden relative bg-[url('/bets.png')] bg-cover bg-center rounded-lg"
+      >
         <motion.div
           ref={topContentRef}
           className="flex gap-3 p-2 cursor-grab active:cursor-grabbing will-change-transform"
@@ -165,7 +168,7 @@ export default function JackpotBar({
       </div>
 
       {/* BOTTOM (banked per step) */}
-      <div className="w-full overflow-hidden relative">
+      <div className="w-full overflow-hidden relative bg-[url('/bg_bets.png')] bg-cover bg-center rounded-lg">
         <motion.div
           ref={botContentRef}
           className="flex gap-3 p-2 cursor-grab active:cursor-grabbing will-change-transform"
@@ -192,7 +195,7 @@ export default function JackpotBar({
                 className={`min-w-[88px] px-3 py-2 rounded-lg text-center text-sm font-bold border ${
                   amount > 0
                     ? "bg-blue-600 text-white"
-                    : "bg-gray-200 text-gray-600"
+                    : "bg-green-200 text-black"
                 }`}
               >
                 €{(amount || 0).toFixed(2)}
