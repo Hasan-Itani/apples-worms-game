@@ -1,55 +1,53 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
+import Image from "next/image";
+
 import { useGameLogic } from "./hooks/useGameLogic";
 import GameStats from "./components/GameStats";
 import AutoGameStats from "./components/AutoGameStats";
 import BetControls from "./components/BetControls";
 import Boxes from "./components/Boxes";
-import Image from "next/image";
+
+import useAudio from "./hooks/useAudio";
+import SettingsHub from "./components/ui/SettingsHub";
+import AudioMuteButton from "./components/ui/AudioMuteButton";
+import SettingsLauncherButton from "./components/ui/SettingsLauncherButton";
+import Loading from "./components/Loading";
 
 export default function HomePage() {
   const game = useGameLogic();
-  const audioRef = useRef(null);
-  const [muted, setMuted] = useState(false);
-  const [audioStarted, setAudioStarted] = useState(false);
 
-  // Start audio after first click anywhere
+  // sprite audio
+  const audio = useAudio();
+  const [unlocked, setUnlocked] = useState(false);
+  const [loading, setLoading] = useState(true); // новый state
+
   useEffect(() => {
-    const handleUserInteraction = () => {
-      if (audioRef.current && !audioStarted) {
-        audioRef.current.volume = 0.3;
-        audioRef.current.play().catch((err) => {
-          console.log("Play blocked:", err);
-        });
-        setAudioStarted(true);
+    const unlockOnce = () => {
+      if (!unlocked) {
+        audio.unlock("basic_background");
+        setUnlocked(true);
       }
     };
+    window.addEventListener("pointerdown", unlockOnce, { once: true });
+    return () => window.removeEventListener("pointerdown", unlockOnce);
+  }, [audio, unlocked]);
 
-    window.addEventListener("click", handleUserInteraction, { once: true });
-    return () => {
-      window.removeEventListener("click", handleUserInteraction);
-    };
-  }, [audioStarted]);
-
-  const toggleMute = () => {
-    if (audioRef.current) {
-      audioRef.current.muted = !muted;
-      setMuted(!muted);
-    }
-  };
+    if (loading) {
+    return <Loading onStart={() => setLoading(false)} />;
+  }
 
   return (
-    <div className="min-h-screen bg-[url(/landscape_background.jpg)] bg-no-repeat bg-cover bg-center">
-      {/* Audio */}
-      <audio ref={audioRef} src="/ambient.mp3" loop hidden />
-
-      {/* Mute/Unmute Button */}
-      <button
-        onClick={toggleMute}
-        className="absolute top-4 right-4 bg-black bg-opacity-50 text-white px-3 py-1 rounded hover:bg-opacity-70 z-50"
-      >
-        {muted ? "Unmute" : "Mute"}
-      </button>
+    <div className="min-h-screen bg-[url(/landscape_background.jpg)] bg-no-repeat bg-cover bg-center relative">
+      {/* === Top-right floating controls bar (both 45x45) === */}
+      <SettingsHub
+        renderLauncher={({ open }) => (
+          <div className="fixed top-4 right-4 z-50 flex items-center gap-2">
+            <AudioMuteButton size={45} />
+            <SettingsLauncherButton size={45} onClick={open} />
+          </div>
+        )}
+      />
 
       {/* Layout */}
       <div className="flex flex-col md:grid md:grid-cols-2 w-full h-full gap-3 p-4">

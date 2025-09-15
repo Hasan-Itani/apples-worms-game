@@ -120,11 +120,7 @@ export default function Boxes({
         bankValues={bankValues}
       />
 
-      {mode === "auto" && !gameActive && (
-        <div className="text-center text-sm text-gray-700">
-          Tap boxes to set the auto-open order
-        </div>
-      )}
+ 
 
       <div className="relative w-full max-w-md aspect-square">
         {/* grid */}
