@@ -30,3 +30,60 @@ html, body {
   background-position: center;
   overflow-x: hidden;
 }
+
+@keyframes startPulse {
+  0% {
+    background-image: url('/start_1.png');
+  }
+  50% {
+    background-image: url('/start_2.png');
+  }
+  100% {
+    background-image: url('/start_1.png');
+  }
+}
+
+.start-button {
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  animation: startPulse 2s infinite;
+}
+
+@keyframes collectPulse {
+  0% {
+    background-image: url('/collect_1.png');
+  }
+  50% {
+    background-image: url('/collect_2.png');
+  }
+  100% {
+    background-image: url('/collect_1.png');
+  }
+}
+
+.collect-button {
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  animation: collectPulse 2s infinite;
+}
+
+@keyframes bankPulse {
+  0% {
+    background-image: url('/bank_it_1.png');
+  }
+  50% {
+    background-image: url('/bank_it_2.png');
+  }
+  100% {
+    background-image: url('/bank_it_1.png');
+  }
+}
+
+.bank-button {
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  animation: bankPulse 2s infinite;
+}

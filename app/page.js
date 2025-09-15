@@ -50,17 +50,16 @@ export default function HomePage() {
       >
         {muted ? "Unmute" : "Mute"}
       </button>
-      {/* mobile: flex-col, desktop: grid-cols-2 */}
-      <div className="flex flex-col md:grid md:grid-cols-2 w-full h-full gap-6 p-4">
-        {/* RIGHT PANEL (Boxes) */}
+
+      {/* Layout */}
+      <div className="flex flex-col md:grid md:grid-cols-2 w-full h-full gap-3 p-4">
+        {/* RIGHT PANEL (Boxes + mobile controls) */}
         <div className="flex flex-col justify-center items-center order-1 md:order-2 w-full">
           <Boxes
             grid={game.grid}
             handleClick={game.onBoxClick}
-            /* NEW props for auto-shake */
             currentBoxIndex={game.currentBoxIndex}
             roundInProgress={game.roundInProgress}
-            /* unchanged below */
             gridSize={game.gridSize}
             worms={game.worms}
             bet={game.bet}
@@ -79,18 +78,78 @@ export default function HomePage() {
             gameActive={game.gameActive}
           />
 
-          {/* Mobile Start Game button */}
-          {game.mode === "manual" && !game.manualRunning && (
-            <button
-              onClick={game.startGame}
-              className="md:hidden w-full max-w-xs mt-4 py-3 px-4 bg-blue-500 hover:bg-blue-600 text-white rounded text-lg font-bold"
-            >
-              Start Game
-            </button>
+          {/* --- MOBILE CONTROLS --- */}
+          {game.mode === "manual" && (
+            <div className="md:hidden w-full mt-4">
+              {!game.manualRunning ? (
+                <button
+                  onClick={game.startGame}
+                  className="w-full py-4 px-8 text-white rounded text-xl font-bold start-button"
+                >
+                  Start Game
+                </button>
+              ) : (
+                <div className="flex gap-2 w-full">
+                  <button
+                    onClick={game.collectApples}
+                    disabled={game.openedApples === 0}
+                    className={`flex-1 h-[80px] rounded text-lg font-bold text-white ${
+                      game.openedApples === 0
+                        ? "bg-[url('/collect_1.png')] bg-no-repeat bg-center bg-contain cursor-not-allowed"
+                        : "collect-button"
+                    }`}
+                  >
+                    Collect: {game.collectAmount().toFixed(2)}
+                  </button>
+
+                  <button
+                    onClick={() => game.bankIt(game.bankValue)}
+                    disabled={game.openedApples === 0}
+                    className={`flex-1 h-[80px] rounded text-lg font-bold text-white ${
+                      game.openedApples === 0
+                        ? "bg-[url('/bank_it_1.png')] bg-no-repeat bg-center bg-contain cursor-not-allowed"
+                        : "bank-button"
+                    }`}
+                  >
+                    Bank It
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {game.mode === "auto" && (
+            <div className="md:hidden w-full mt-4">
+              {!game.gameActive ? (
+                <button
+                  onClick={game.startAutoPlay}
+                  disabled={
+                    game.balance < game.bet || game.selectedBoxes.length === 0
+                  }
+                  className={`w-full h-[100px] rounded text-2xl font-bold text-white ${
+                    game.balance < game.bet || game.selectedBoxes.length === 0
+                      ? "bg-[url('/start_1.png')] bg-no-repeat bg-center bg-contain cursor-not-allowed"
+                      : "start-button"
+                  }`}
+                >
+                  Start Auto Play ({game.rounds} rounds)
+                  {game.selectedBoxes.length === 0 && (
+                    <div className="text-sm mt-1">Select boxes first!</div>
+                  )}
+                </button>
+              ) : (
+                <button
+                  onClick={game.stopAutoPlay}
+                  className="w-full py-3 bg-red-500 text-white rounded hover:bg-red-600 text-lg font-bold"
+                >
+                  Stop Auto (Round {game.currentRound}/{game.rounds})
+                </button>
+              )}
+            </div>
           )}
         </div>
 
-        {/* LEFT PANEL (Stats/Controls) */}
+        {/* LEFT PANEL (Stats + desktop controls) */}
         <div className="text-center text-black flex flex-col items-center order-2 md:order-1">
           <Image
             src={"/logo.png"}
@@ -100,7 +159,7 @@ export default function HomePage() {
             className="mx-auto mt-6 mb-4 w-[70%] max-w-[400px] h-auto"
           />
 
-          <div className="w-full max-w-md mx-auto p-4 space-y-6 ">
+          <div className="w-full max-w-md mx-auto p-2 space-y-6 ">
             {/* Manual stats */}
             {game.mode === "manual" && (
               <GameStats
@@ -145,25 +204,25 @@ export default function HomePage() {
               />
             )}
 
-            {/* Manual controls */}
+            {/* Manual controls (desktop only) */}
             {game.mode === "manual" && (
-              <div className="w-full">
+              <div className="w-full hidden md:block">
                 {!game.manualRunning ? (
                   <button
                     onClick={game.startGame}
-                    className="hidden md:block w-full py-2 px-4 bg-blue-500 hover:bg-blue-600 text-white rounded"
+                    className="w-full py-6 px-20 text-white rounded start-button text-2xl font-bold"
                   >
                     Start Game
                   </button>
                 ) : (
-                  <div className="flex flex-col sm:flex-row gap-2">
+                  <div className="flex gap-2 justify-center w-full">
                     <button
                       onClick={game.collectApples}
                       disabled={game.openedApples === 0}
-                      className={`flex-1 py-2 rounded text-white ${
+                      className={`flex-1 h-[100px] rounded text-2xl font-bold text-white ${
                         game.openedApples === 0
-                          ? "bg-yellow-300 cursor-not-allowed"
-                          : "bg-yellow-500 hover:bg-yellow-600"
+                          ? "bg-[url('/collect_1.png')] bg-no-repeat bg-center bg-contain cursor-not-allowed"
+                          : "collect-button"
                       }`}
                     >
                       Collect: {game.collectAmount().toFixed(2)}
@@ -172,10 +231,10 @@ export default function HomePage() {
                     <button
                       onClick={() => game.bankIt(game.bankValue)}
                       disabled={game.openedApples === 0}
-                      className={`flex-1 py-2 rounded text-white ${
+                      className={`flex-1 h-[100px] rounded text-2xl font-bold text-white ${
                         game.openedApples === 0
-                          ? "bg-green-300 cursor-not-allowed"
-                          : "bg-green-500 hover:bg-green-600"
+                          ? "bg-[url('/bank_it_1.png')] bg-no-repeat bg-center bg-contain cursor-not-allowed"
+                          : "bank-button"
                       }`}
                     >
                       Bank It
@@ -185,19 +244,23 @@ export default function HomePage() {
               </div>
             )}
 
-            {/* Auto controls */}
+            {/* Auto controls (desktop only) */}
             {game.mode === "auto" && !game.gameActive && (
-              <div className="space-y-2">
+              <div className="hidden md:block space-y-2">
                 <button
                   onClick={game.startAutoPlay}
-                  className="w-full py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
                   disabled={
                     game.balance < game.bet || game.selectedBoxes.length === 0
                   }
+                  className={`w-full h-[100px] rounded text-2xl font-bold text-white ${
+                    game.balance < game.bet || game.selectedBoxes.length === 0
+                      ? "bg-[url('/start_1.png')] bg-no-repeat bg-center bg-contain cursor-not-allowed"
+                      : "start-button"
+                  }`}
                 >
                   Start Auto Play ({game.rounds} rounds)
                   {game.selectedBoxes.length === 0 && (
-                    <div className="text-xs mt-1">Select boxes first!</div>
+                    <div className="text-sm mt-1">Select boxes first!</div>
                   )}
                 </button>
                 {game.originalBet && game.originalBet !== game.bet && (
@@ -208,10 +271,10 @@ export default function HomePage() {
               </div>
             )}
             {game.mode === "auto" && game.gameActive && (
-              <div className="flex flex-col gap-2">
+              <div className="hidden md:flex flex-col gap-2">
                 <button
                   onClick={game.stopAutoPlay}
-                  className="w-full py-1 bg-red-500 text-white rounded hover:bg-red-600"
+                  className="w-full py-3 bg-red-500 text-white rounded hover:bg-red-600 text-xl font-bold"
                 >
                   Stop Auto (Round {game.currentRound}/{game.rounds})
                 </button>
@@ -220,16 +283,17 @@ export default function HomePage() {
                 </div>
                 {game.roundInProgress && (
                   <div className="text-center text-sm text-gray-600">
-                    Opening box
+                    Opening box{" "}
                     {Math.min(
                       game.currentBoxIndex + 1,
                       game.selectedBoxes.length
-                    )}
+                    )}{" "}
                     of {game.selectedBoxes.length}...
                   </div>
                 )}
               </div>
             )}
+
             {/* Bet & Controls */}
             <BetControls
               bet={game.bet}

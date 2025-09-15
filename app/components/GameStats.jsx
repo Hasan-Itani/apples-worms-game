@@ -8,25 +8,44 @@ export default function GameStats({
   totalBoxes,
 }) {
   return (
-    <div className="w-full h-40 p-3 border rounded-lg bg-gradient-to-b from-blue-300 to-slate-200 shadow-md flex flex-col justify-between">
-      <p className="text-xs text-gray-600 font-medium">
-        🍎 Apples Remaining:{" "}
-        <span className="font-bold text-slate-800">{applesRemaining}</span>
-      </p>
-      <p className="text-xs text-gray-600 font-medium">
-        🪱 Worm Risk:{" "}
-        <span className="text-red-600 font-bold">{chanceOfWorm}%</span>
-      </p>
-      <p className="text-xs text-gray-600 font-medium">
-        📦 Opened Tiles:{" "}
-        <span className="font-bold text-slate-800">
-          {openedTiles} / {totalBoxes}
+    <div className="w-full p-4 bg-[url('/stats.png')] bg-cover bg-center rounded-2xl shadow-md flex flex-col gap-2">
+      {/* Apples Remaining */}
+      <div className="flex justify-between items-center">
+        <span className="text-base text-white font-semibold">
+          Apples Remaining
         </span>
-      </p>
-      <p className="text-xs text-gray-600 font-medium">
-        🎯 Chance of Apple:{" "}
-        <span className="text-green-600 font-bold">{chanceOfApple}%</span>
-      </p>
+        <span className="font-bold text-lg text-yellow-300">
+          {applesRemaining}
+        </span>
+      </div>
+
+      {/* Worm Risk */}
+      <div className="flex justify-between items-center">
+        <span className="text-base text-white font-semibold">Worm Risk</span>
+        <span className="text-red-400 font-bold text-lg">
+          {chanceOfWorm}%
+        </span>
+      </div>
+
+      {/* Opened Tiles */}
+      <div className="flex justify-between items-center">
+        <span className="text-base text-white font-semibold">
+          Opened Tiles
+        </span>
+        <span className="font-bold text-lg text-blue-300">
+          {openedTiles}/{totalBoxes}
+        </span>
+      </div>
+
+      {/* Chance of Apple */}
+      <div className="flex justify-between items-center">
+        <span className="text-base text-white font-semibold">
+          Chance of Apple on Next Pick
+        </span>
+        <span className="text-green-400 font-bold text-lg">
+          {chanceOfApple}%
+        </span>
+      </div>
     </div>
   );
 }
