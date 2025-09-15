@@ -154,7 +154,7 @@ export default function HomePage() {
             alt="Logo"
             width={400}
             height={180}
-            className="mx-auto mt-6 mb-4 w-[70%] max-w-[400px] h-auto"
+            className="mx-auto mt-2 mb-2 w-[70%] max-w-[400px] h-auto"
           />
 
           <div className="w-full max-w-md mx-auto p-2 space-y-6 ">
@@ -258,7 +258,7 @@ export default function HomePage() {
                 >
                   Start Auto Play ({game.rounds} rounds)
                   {game.selectedBoxes.length === 0 && (
-                    <div className="text-sm mt-1">Select boxes first!</div>
+                    <div className="text-sm">Select boxes first!</div>
                   )}
                 </button>
                 {game.originalBet && game.originalBet !== game.bet && (
