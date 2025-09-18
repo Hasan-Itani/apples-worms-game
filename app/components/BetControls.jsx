@@ -68,6 +68,12 @@ export default function BetControls({
         ]
     );
 
+  const formatMoney = (v) =>
+    new Intl.NumberFormat("en-US", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(Number(v || 0));
+
   const [bankIndex, setBankIndex] = useState(0);
 
   useEffect(() => {
@@ -113,7 +119,7 @@ export default function BetControls({
               </IncDecButton>
               <div className="flex-1 text-white text-center text-lg font-bold rounded-lg shadow-inner">
                 <p className="text-[11px] mt-3">Bet Amount</p>
-                <p className="mb-2">€{bet}.00</p>
+                <p className="mb-2">€{formatMoney(bet)}</p>
               </div>
               <IncDecButton
                 onPointerDown={() => startHold(() => stepBet(1))}
@@ -163,10 +169,10 @@ export default function BetControls({
           {/* Balance */}
           <div>
             <div className="flex w-[160px] h-[40px] mt-3 items-center bg-black rounded-xl">
-            <div className="flex-1 text-white text-center text-lg font-bold rounded-lg shadow-inner">
-              <p className="text-[11px] text-white mt-3">Balance</p>
-              <p className="mb-2 text-white">€{balance.toFixed(2)}</p>
-            </div>
+              <div className="flex-1 text-white text-center text-lg font-bold rounded-lg shadow-inner">
+                <p className="text-[11px] text-white mt-3">Balance</p>
+                <p className="mb-2 text-white">€{balance.toFixed(2)}</p>
+              </div>
             </div>
             <div className="text-xs text-white mt-1">
               Max Win: €{maxWin.toFixed(2)}
@@ -187,7 +193,7 @@ export default function BetControls({
                   −
                 </IncDecButton>
                 <div className="flex-1 text-white text-center text-lg font-bold rounded-lg shadow-inner">
-                <p className="text-[11px] mt-3">Bank it</p>
+                  <p className="text-[11px] mt-3">Bank it</p>
                   {availableBankOptions.length > 0
                     ? availableBankOptions[bankIndex]
                     : "0.00"}
@@ -235,7 +241,9 @@ export default function BetControls({
                       : "bg-[url('/button_nonactive.png')] group-hover:bg-[url('/mode.png')]"
                   }`}
                 />
-                <span className="relative z-10 text-white font-bold">Manual</span>
+                <span className="relative z-10 text-white font-bold">
+                  Manual
+                </span>
               </button>
               <button
                 onClick={() => setMode("auto")}
@@ -274,7 +282,6 @@ export default function BetControls({
               ))}
             </div>
           </div>
-
         </div>
       </div>
     </div>

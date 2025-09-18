@@ -244,13 +244,13 @@ export default function HomePage() {
 
             {/* Auto controls (desktop only) */}
             {game.mode === "auto" && !game.gameActive && (
-              <div className="hidden md:block space-y-2">
+              <div className="hidden md:block">
                 <button
                   onClick={game.startAutoPlay}
                   disabled={
                     game.balance < game.bet || game.selectedBoxes.length === 0
                   }
-                  className={`w-full h-[100px] rounded text-2xl font-bold text-white ${
+                  className={`w-full h-[88px] rounded text-2xl font-bold text-white ${
                     game.balance < game.bet || game.selectedBoxes.length === 0
                       ? "bg-[url('/start_1.png')] bg-no-repeat bg-center bg-contain cursor-not-allowed"
                       : "start-button"

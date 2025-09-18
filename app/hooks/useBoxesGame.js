@@ -78,25 +78,33 @@ export function useBoxesGame(
   const availableBankOptions = useMemo(() => {
     if (openedApples === 0 || mode === "auto") return [];
 
-    const currentStepIndex = openedApples - 1;
-    if (bankItUsedSteps.includes(currentStepIndex)) return [];
+    const step = openedApples - 1;
+    if (bankItUsedSteps.includes(step)) return [];
 
-    const currentJackpot = effectiveJackpots[currentStepIndex] || 0;
-    const options = [];
+    const currentJackpot = Number(effectiveJackpots[step]) || 0;
+    if (currentJackpot <= 0) return [];
 
-    options.push(+(bet / 4).toFixed(2));
-    const halfJackpot = Math.max(0, +(currentJackpot / 2).toFixed(2));
-    options.push(Math.min(halfJackpot, currentJackpot));
-    const progressive = Math.min(
-      currentJackpot,
-      +(bet * openedApples).toFixed(2)
-    );
-    options.push(progressive);
+    // Start at 1/4 of bet, then keep doubling (…/2, 1×, 2×, 4×, …)
+    let start = +(Number(bet) / 4).toFixed(2);
+    if (!Number.isFinite(start) || start <= 0) return [];
 
-    const uniq = Array.from(new Set(options)).filter(
-      (v) => v > 0 && v < currentJackpot
-    );
-    return uniq.sort((a, b) => a - b);
+    const out = [];
+    const seen = new Set();
+    let v = start;
+
+    // generate until v >= currentJackpot
+    // safety cap to avoid any odd infinite loops
+    for (let i = 0; i < 32; i++) {
+      if (v >= currentJackpot) break;
+      const r = +v.toFixed(2);
+      if (!seen.has(r)) {
+        out.push(r);
+        seen.add(r);
+      }
+      v *= 2;
+    }
+
+    return out;
   }, [openedApples, mode, effectiveJackpots, bet, bankItUsedSteps]);
 
   const maxWin = useMemo(() => {

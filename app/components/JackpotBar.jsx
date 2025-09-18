@@ -122,11 +122,11 @@ export default function JackpotBar({
       {/* TOP (effective jackpots) */}
       <div
         ref={containerRef}
-        className="w-full overflow-hidden relative bg-[url('/bets.png')] bg-cover bg-center rounded-lg"
+        className="w-full overflow-hidden relative bg-[url('/bets.png')] bg-cover"
       >
         <motion.div
           ref={topContentRef}
-          className="flex gap-3 p-2 cursor-grab active:cursor-grabbing will-change-transform"
+          className="flex gap-1 p-2 cursor-grab active:cursor-grabbing will-change-transform"
           drag="x"
           style={{ x }}
           dragConstraints={{ left: bounds.min, right: bounds.max }}
@@ -149,7 +149,7 @@ export default function JackpotBar({
                   animate="visible"
                   exit="exit"
                   transition={{ type: "spring", stiffness: 300, damping: 25 }}
-                  className={`min-w-[88px] px-3 py-2 rounded-lg text-center text-sm font-bold border ${itemClass(
+                  className={`min-w-[88px] rounded-lg text-center text-sm font-bold border ${itemClass(
                     i,
                     isCurrent
                   )}`}
@@ -164,14 +164,14 @@ export default function JackpotBar({
 
       {/* BOTTOM label */}
       <div className="text-center -mt-1">
-        <span className="text-xs font-semibold text-gray-700">BANKED</span>
+        <span className="text-xs font-extrabold tracking-widest text-gray-800">BANKED</span>
       </div>
 
       {/* BOTTOM (banked per step) */}
-      <div className="w-full overflow-hidden relative bg-[url('/bg_bets.png')] bg-cover bg-center rounded-lg">
+      <div className="w-full overflow-hidden relative bg-[url('/bg_bets.png')] bg-cover">
         <motion.div
           ref={botContentRef}
-          className="flex gap-3 p-2 cursor-grab active:cursor-grabbing will-change-transform"
+          className="flex gap-1 p-2 cursor-grab active:cursor-grabbing will-change-transform"
           drag="x"
           style={{ x }}
           dragConstraints={{ left: bounds.min, right: bounds.max }}
@@ -192,7 +192,7 @@ export default function JackpotBar({
                 animate="visible"
                 exit="exit"
                 transition={{ type: "spring", stiffness: 300, damping: 25 }}
-                className={`min-w-[88px] px-3 py-2 rounded-lg text-center text-sm font-bold border ${
+                className={`min-w-[88px] rounded-lg text-center text-sm font-bold border ${
                   amount > 0
                     ? "bg-blue-600 text-white"
                     : "bg-green-200 text-black"

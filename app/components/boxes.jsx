@@ -1,9 +1,167 @@
 "use client";
 
 import Jackpot from "./JackpotBar";
-import Image from "next/image";
+import NextImage from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import { useEffect, useRef, useState, useMemo } from "react";
+
+/**
+ * PreloadedSequencer
+ * - Preloads frames once on client (useEffect + window.Image)
+ * - Imperatively swaps <img>.src via rAF (no React re-render per frame)
+ * - mode: 'loop' | 'once'
+ */
+function PreloadedSequencer({
+  active,
+  mode = "loop",
+  frames = 9,
+  fps = 30,
+  prefix = "/box_explode_",
+  ext = ".png",
+  scalePct = 170,
+  onDone,
+}) {
+  const imgRef = useRef(null);
+  const rafRef = useRef(null);
+  const startRef = useRef(0);
+  const loadedSrcsRef = useRef([]);
+  const readyRef = useRef(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    readyRef.current = false;
+    loadedSrcsRef.current = [];
+
+    if (typeof window === "undefined") return;
+
+    const preload = async () => {
+      const list = [];
+      for (let i = 1; i <= frames; i++) {
+        const src = `${prefix}${i}${ext}`;
+        list.push(src);
+      }
+
+      await Promise.all(
+        list.map(
+          (src) =>
+            new Promise((resolve) => {
+              const im = new window.Image();
+              im.decoding = "async";
+              im.loading = "eager";
+              im.onload = im.onerror = () => resolve();
+              im.src = src;
+            })
+        )
+      );
+      if (!cancelled) {
+        loadedSrcsRef.current = list;
+        readyRef.current = true;
+      }
+    };
+
+    preload();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [frames, prefix, ext]);
+
+  useEffect(() => {
+    if (!active) return;
+    if (!imgRef.current) return;
+
+    let stopped = false;
+    startRef.current = 0;
+    const msPerFrame = 1000 / fps;
+
+    const run = (t) => {
+      if (!readyRef.current) {
+        rafRef.current = requestAnimationFrame(run);
+        return;
+      }
+
+      if (!startRef.current) startRef.current = t;
+      const elapsed = t - startRef.current;
+
+      let fi = Math.floor(elapsed / msPerFrame);
+      const lastIndex = frames - 1;
+
+      if (mode === "loop") {
+        fi = fi % frames;
+      } else {
+        if (fi >= frames) {
+          fi = lastIndex;
+          if (!stopped) {
+            stopped = true;
+            onDone && onDone();
+          }
+        }
+      }
+
+      const src = loadedSrcsRef.current[fi] || loadedSrcsRef.current[lastIndex];
+      if (src && imgRef.current && imgRef.current.src !== src) {
+        imgRef.current.src = src;
+      }
+
+      if (!stopped) rafRef.current = requestAnimationFrame(run);
+    };
+
+    rafRef.current = requestAnimationFrame(run);
+    return () => {
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
+    };
+  }, [active, fps, frames, mode, onDone]);
+
+  if (!active) return null;
+
+  const sizeStyle = {
+    width: `${scalePct}%`,
+    height: `${scalePct}%`,
+    transform: "translate(-50%, -50%)",
+    left: "50%",
+    top: "50%",
+  };
+
+  return (
+    <div
+      className="absolute pointer-events-none select-none z-10 transform-gpu will-change-transform"
+      style={sizeStyle}
+    >
+      <img
+        ref={imgRef}
+        src={`${prefix}1${ext}`}
+        alt=""
+        className="w-full h-full object-contain"
+      />
+    </div>
+  );
+}
+
+function LoopFX({ active }) {
+  return (
+    <PreloadedSequencer
+      active={active}
+      mode="loop"
+      frames={9}
+      fps={20}
+      scalePct={115}
+    />
+  );
+}
+
+function RevealFX({ active, onDone }) {
+  return (
+    <PreloadedSequencer
+      active={active}
+      mode="once"
+      frames={9}
+      fps={30}
+      scalePct={180}
+      onDone={onDone}
+    />
+  );
+}
 
 export default function Boxes({
   grid,
@@ -29,11 +187,18 @@ export default function Boxes({
   const [showPopup, setShowPopup] = useState(false);
   const [revealAll, setRevealAll] = useState(false);
   const [shakingIndex, setShakingIndex] = useState(null);
-  const [revealedIndexes, setRevealedIndexes] = useState([]);
-  const [explodingIndexes, setExplodingIndexes] = useState([]); // 👈 для взрывов
-  const prevManualRunningRef = useRef(manualRunning);
 
-  // Show popup and reveal all when gameOver triggers
+  const [loopFx, setLoopFx] = useState(new Set());
+  const [revealFx, setRevealFx] = useState(new Set());
+
+  const [animLock, setAnimLock] = useState(false);
+  const [openingIndex, setOpeningIndex] = useState(null);
+
+  const playedRevealRef = useRef(new Set());
+
+  const prevManualRunningRef = useRef(manualRunning);
+  const prevGridRef = useRef(grid);
+
   useEffect(() => {
     if (gameOver) {
       setRevealAll(true);
@@ -41,18 +206,19 @@ export default function Boxes({
     }
   }, [gameOver]);
 
-  // Reset state when a new manual game starts
   useEffect(() => {
     if (!prevManualRunningRef.current && manualRunning) {
-      setRevealedIndexes([]);
       setShakingIndex(null);
       setRevealAll(false);
-      setExplodingIndexes([]);
+      setLoopFx(new Set());
+      setRevealFx(new Set());
+      setAnimLock(false);
+      setOpeningIndex(null);
+      playedRevealRef.current = new Set();
     }
     prevManualRunningRef.current = manualRunning;
   }, [manualRunning]);
 
-  // Clear selections when switching modes
   useEffect(() => {
     if (mode === "manual") setSelectedBoxes([]);
   }, [mode, setSelectedBoxes]);
@@ -63,41 +229,41 @@ export default function Boxes({
     onPopupClose && onPopupClose();
   };
 
-  // Box selection in auto mode
   const handleBoxSelection = (index) => {
     if (mode !== "auto" || gameActive) return;
+    if (animLock) return;
     setSelectedBoxes((prev) =>
       prev.includes(index) ? prev.filter((i) => i !== index) : [...prev, index]
     );
   };
 
-  // Click box in manual mode with shake animation
   const handleBoxClickLocal = (index) => {
     if (mode === "auto") {
       handleBoxSelection(index);
       return;
     }
     if (!manualRunning) return;
-    if (shakingIndex !== null) return;
-    if (revealedIndexes.includes(index)) return;
+    if (animLock) return;
     if (grid[index] !== "❓") return;
 
-    setShakingIndex(index);
+    setAnimLock(true);
+    setOpeningIndex(index);
 
-    // Включаем взрыв
-    setExplodingIndexes((prev) => [...prev, index]);
-    setTimeout(() => {
-      setExplodingIndexes((prev) => prev.filter((i) => i !== index));
-    }, 600);
+    setShakingIndex(index);
+    setLoopFx((prev) => new Set([...prev, index]));
 
     setTimeout(() => {
       setShakingIndex(null);
-      setRevealedIndexes((prev) => [...prev, index]);
       handleClick(index);
-    }, 350);
+
+      setLoopFx((prev) => {
+        const next = new Set(prev);
+        next.delete(index);
+        return next;
+      });
+    }, 280);
   };
 
-  // ===== Auto: which box should shake now? =====
   const autoShakingIndex = useMemo(() => {
     if (
       mode !== "auto" ||
@@ -114,6 +280,37 @@ export default function Boxes({
     );
     return selectedBoxes[step] ?? null;
   }, [mode, gameActive, roundInProgress, selectedBoxes, currentBoxIndex]);
+
+  useEffect(() => {
+    const prev = prevGridRef.current || [];
+    if (grid && prev && grid.length === prev.length) {
+      const toBlast = [];
+      for (let i = 0; i < grid.length; i++) {
+        if (
+          prev[i] === "❓" &&
+          grid[i] !== "❓" &&
+          !playedRevealRef.current.has(i)
+        ) {
+          toBlast.push(i);
+        }
+      }
+      if (toBlast.length) {
+        setRevealFx((prevSet) => {
+          const next = new Set(prevSet);
+          toBlast.forEach((i) => next.add(i));
+          return next;
+        });
+        setLoopFx((prevSet) => {
+          const next = new Set(prevSet);
+          toBlast.forEach((i) => next.delete(i));
+          return next;
+        });
+
+        toBlast.forEach((i) => playedRevealRef.current.add(i));
+      }
+    }
+    prevGridRef.current = grid;
+  }, [grid]);
 
   return (
     <div className="flex flex-col items-center gap-6 w-full">
@@ -134,38 +331,40 @@ export default function Boxes({
           style={{ gridTemplateColumns: `repeat(${gridSize}, 1fr)` }}
         >
           {grid.map((cell, index) => {
-            const isRevealed =
-              revealAll || revealedIndexes.includes(index) || cell !== "❓";
+            const isRevealed = revealAll || grid[index] !== "❓";
 
+            // Disable when:
+            // - manual: not running / revealed / lock
+            // - auto: gameActive animLock
             const isDisabled =
               (mode === "manual" &&
                 (!manualRunning ||
                   isRevealed ||
+                  (animLock && openingIndex !== index) ||
                   (shakingIndex !== null && shakingIndex !== index))) ||
-              (mode === "auto" && gameActive);
+              (mode === "auto" && (gameActive || animLock));
 
             const isSelected = mode === "auto" && selectedBoxes.includes(index);
-
             const isShaking =
               shakingIndex === index || autoShakingIndex === index;
-
             const order = isSelected ? selectedBoxes.indexOf(index) + 1 : null;
 
-            const isExploding = explodingIndexes.includes(index);
+            const loopActive = !isRevealed && (isShaking || loopFx.has(index));
+            const revealActive = revealFx.has(index);
 
             return (
               <motion.div
                 key={index}
-                onClick={() => handleBoxClickLocal(index)}
-                className={`relative flex items-center justify-center cursor-pointer ${
+                onClick={() => !isDisabled && handleBoxClickLocal(index)}
+                className={`relative flex items-center justify-center cursor-pointer transform-gpu will-change-transform ${
                   isDisabled ? "pointer-events-none" : ""
                 }`}
                 animate={
                   isShaking
                     ? {
-                        x: [0, -8, 8, -6, 6, 0],
-                        rotate: [0, -8, 8, -6, 6, 0],
-                        scale: [1, 1.04, 0.98, 1],
+                        x: [0, -6, 6, -4, 4, 0],
+                        rotate: [0, -4, 4, -3, 3, 0],
+                        scale: [1, 1.03, 0.995, 1],
                       }
                     : { x: 0, rotate: 0, scale: 1 }
                 }
@@ -174,44 +373,49 @@ export default function Boxes({
                     ? {
                         duration:
                           mode === "auto" && autoShakingIndex === index
-                            ? 0.8
-                            : 0.35,
+                            ? 0.5
+                            : 0.45,
                         repeat:
                           mode === "auto" && autoShakingIndex === index
                             ? Infinity
                             : 0,
                         repeatType: "loop",
+                        ease: [0.22, 0.61, 0.36, 1],
                       }
-                    : { duration: 0.2 }
+                    : { duration: 0.18, ease: [0.22, 0.61, 0.36, 1] }
                 }
               >
-                <Image
+                {/* Base box */}
+                <NextImage
                   src="/box.png"
                   alt="Box"
                   fill
-                  className="object-contain select-none pointer-events-none"
+                  className="object-contain select-none pointer-events-none transform-gpu will-change-transform"
                 />
 
-                {/* Order badge */}
+                {/* Auto selection order */}
                 {order && (
                   <div className="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-blue-600 text-white text-xs font-bold flex items-center justify-center shadow">
                     {order}
                   </div>
                 )}
 
-                {/* Content */}
+                {/* Small loop FX while shaking */}
+                <LoopFX active={loopActive && !isRevealed} />
+
+                {/* Revealed content */}
                 {isRevealed && cell !== "❓" && (
-                  <div className="absolute w-3/4 h-3/4">
+                  <div className="absolute w-3/4 h-3/4 transform-gpu will-change-transform">
                     {cell === "🍎" && (
-                      <Image
+                      <NextImage
                         src="/apple.png"
                         alt="Apple"
                         fill
                         className="object-contain"
                       />
                     )}
-                    {cell === "💣" && (
-                      <Image
+                    {(cell === "💣" || cell === "🐛" || cell === "🪱") && (
+                      <NextImage
                         src="/worm.png"
                         alt="Worm"
                         fill
@@ -221,12 +425,21 @@ export default function Boxes({
                   </div>
                 )}
 
-                {/* Взрыв */}
-                {isExploding && (
-                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                    <div className="explosion" />
-                  </div>
-                )}
+                {/* One-shot reveal blast; unlock when done */}
+                <RevealFX
+                  active={revealActive}
+                  onDone={() => {
+                    setRevealFx((prev) => {
+                      const next = new Set(prev);
+                      next.delete(index);
+                      return next;
+                    });
+                    if (openingIndex === index) {
+                      setOpeningIndex(null);
+                      setAnimLock(false);
+                    }
+                  }}
+                />
               </motion.div>
             );
           })}
@@ -243,7 +456,7 @@ export default function Boxes({
               className="absolute inset-0 z-50 flex items-center justify-center bg-black/50"
             >
               <div className="relative w-64 h-64 flex items-center justify-center">
-                <Image
+                <NextImage
                   src="/win.png"
                   alt="Result"
                   fill

@@ -5,9 +5,12 @@ import { useEffect, useState } from "react";
 import useAudio from "../../hooks/useAudio";
 import BlueDivider from "./BlueDivider";
 import RulesContent from "./RulesContent";
+import AudioLab from "../AudioLab";
 
 function SectionTitle({ children }) {
-  return <div className="font-extrabold text-sky-300 text-center">{children}</div>;
+  return (
+    <div className="font-extrabold text-sky-300 text-center">{children}</div>
+  );
 }
 function MutedText({ children }) {
   return <div className="text-xs opacity-80 text-center">{children}</div>;
@@ -28,17 +31,23 @@ function AudioSettings() {
     playSfx,
   } = useAudio();
 
-  const [musicVol, setMusicVol] = useState(() => Math.round(getMusicVolume() * 100));
+  const [musicVol, setMusicVol] = useState(() =>
+    Math.round(getMusicVolume() * 100)
+  );
   const [sfxVol, setSfxVol] = useState(() => Math.round(getSfxVolume() * 100));
   const [musicMuteUI, setMusicMuteUI] = useState(isMusicMuted());
   const [sfxMuteUI, setSfxMuteUI] = useState(isSfxMuted());
-  const [bgChoice, setBgChoice] = useState(getCurrentMusic() || "basic_background");
+  const [bgChoice, setBgChoice] = useState(
+    getCurrentMusic() || "basic_background"
+  );
 
   return (
     <div className="space-y-6">
       {/* Track chooser */}
-      <div className="p-4 rounded-xl border border-sky-400/25 bg-white/5 space-y-3">
-        <div className="font-bold text-sky-300 mb-2 text-center">Background Track</div>
+      <div className="p-4 rounded-xl border border-sky-400/25 bg-white/5 space-y-3 ">
+        <div className="font-bold text-sky-300 mb-2 text-center">
+          Background Track
+        </div>
         <div className="flex gap-2 justify-center flex-wrap">
           {[
             { key: "ambience", label: "Ambience" },
@@ -133,7 +142,9 @@ function AudioSettings() {
           }}
         />
         <div className="text-sm opacity-80">{sfxVol}%</div>
-        <MutedText>Clicks (e.g., +/-) are SFX and won’t be muted by Music.</MutedText>
+        <MutedText>
+          Clicks (e.g., +/-) are SFX and won’t be muted by Music.
+        </MutedText>
       </div>
     </div>
   );
@@ -145,11 +156,11 @@ function AudioSettings() {
  *  - renderLauncher?: ({ open }) => ReactNode
  */
 export default function SettingsHub({ renderLauncher }) {
-  const audio = useAudio(); // <-- bind global audio manager here
+  const audio = useAudio();
 
   const [open, setOpen] = useState(false);
   const [phase, setPhase] = useState("idle"); // enter | idle | exit
-  const [tab, setTab] = useState("rules"); // rules | audio
+  const [tab, setTab] = useState("rules"); // rules | audio | sounds
 
   useEffect(() => {
     if (open) {
@@ -170,10 +181,17 @@ export default function SettingsHub({ renderLauncher }) {
     setTimeout(() => setOpen(false), 300);
   };
 
+  const tabs = [
+    { id: "rules", label: "Rules" },
+    { id: "audio", label: "Settings" },
+    { id: "sounds", label: "Sounds" }, // NEW
+  ];
+
   return (
     <>
       {/* External launcher (put beside mute in page.js) */}
-      {typeof renderLauncher === "function" && renderLauncher({ open: openWithSfx })}
+      {typeof renderLauncher === "function" &&
+        renderLauncher({ open: openWithSfx })}
 
       {/* Overlay modal */}
       {open && (
@@ -192,17 +210,18 @@ export default function SettingsHub({ renderLauncher }) {
         >
           <div className="absolute inset-0 bg-black/75" onClick={close} />
 
-          <div className="relative mx-auto md:mt-14 md:max-w-3xl h-full md:h-auto md:rounded-2xl bg-black/25 backdrop-blur-md border border-sky-400/25 flex flex-col">
+          <div className="relative mx-auto md:mt-14 md:max-w-4xl h-full md:h-auto md:rounded-2xl bg-black/25 backdrop-blur-md border border-sky-400/25 flex flex-col">
             {/* Header + tabs (desktop) */}
             <div className="hidden md:flex items-center justify-between px-4 py-3 border-b border-sky-400/20">
               <div className="font-extrabold text-sky-300 text-lg">
-                {tab === "rules" ? "RULES & INFO" : "SETTINGS"}
+                {tab === "rules"
+                  ? "RULES & INFO"
+                  : tab === "audio"
+                  ? "SETTINGS"
+                  : "AUDIO TEST LAB"}
               </div>
               <div className="flex gap-2">
-                {[
-                  { id: "rules", label: "Rules" },
-                  { id: "audio", label: "Audio" },
-                ].map((t) => (
+                {tabs.map((t) => (
                   <button
                     key={t.id}
                     onClick={() => {
@@ -231,52 +250,51 @@ export default function SettingsHub({ renderLauncher }) {
             {/* Body */}
             <div className="flex-1 p-4 overflow-y-auto">
               {tab === "rules" ? (
-                // Desktop: scrollable panel for Rules
                 <div className="md:max-h-[70vh] md:overflow-y-scroll md:pr-2">
                   <SectionTitle>RULES & INFO</SectionTitle>
                   <BlueDivider />
                   <RulesContent />
                 </div>
-              ) : (
+              ) : tab === "audio" ? (
                 <>
                   <SectionTitle>SETTINGS</SectionTitle>
-                  <MutedText>Music and sound effects are controlled separately.</MutedText>
+                  <MutedText>
+                    Music and sound effects are controlled separately.
+                  </MutedText>
                   <BlueDivider />
                   <AudioSettings />
+                </>
+              ) : (
+                <>
+                  <SectionTitle>AUDIO TEST LAB</SectionTitle>
+                  <MutedText>
+                    Browse & play any clip from your sprite sheet.
+                  </MutedText>
+                  <BlueDivider />
+                  <AudioLab />
                 </>
               )}
             </div>
 
             {/* Bottom tabs (mobile) */}
             <div className="md:hidden relative flex items-center justify-around bg-black/25 backdrop-blur-md py-5">
-              <button
-                onClick={() => {
-                  audio.playSfx?.("button");
-                  setTab("rules");
-                }}
-                className={[
-                  "px-4 py-2 rounded-md font-bold border",
-                  tab === "rules"
-                    ? "bg-sky-500/30 border-sky-400/70"
-                    : "bg-sky-500/15 border-sky-400/30",
-                ].join(" ")}
-              >
-                Rules
-              </button>
-              <button
-                onClick={() => {
-                  audio.playSfx?.("button");
-                  setTab("audio");
-                }}
-                className={[
-                  "px-4 py-2 rounded-md font-bold border",
-                  tab === "audio"
-                    ? "bg-sky-500/30 border-sky-400/70"
-                    : "bg-sky-500/15 border-sky-400/30",
-                ].join(" ")}
-              >
-                Settings
-              </button>
+              {tabs.map((t) => (
+                <button
+                  key={t.id}
+                  onClick={() => {
+                    audio.playSfx?.("button");
+                    setTab(t.id);
+                  }}
+                  className={[
+                    "px-4 py-2 rounded-md font-bold border",
+                    tab === t.id
+                      ? "bg-sky-500/30 border-sky-400/70"
+                      : "bg-sky-500/15 border-sky-400/30",
+                  ].join(" ")}
+                >
+                  {t.label}
+                </button>
+              ))}
               <button
                 onClick={close}
                 className="px-4 py-2 rounded-md font-bold border bg-red-600/80 border-red-500/40"
