@@ -3,6 +3,9 @@ import { useRef, useState, useEffect } from "react";
 import IncDecButton from "./ui/IncDecButton";
 import { nearestStepIndex } from "../utils/nearestStepIndex";
 
+const MODE_SOUND = "/sounds/modes.mp3";
+const BET_SOUND = "/sounds/bets.mp3";
+
 export default function BetControls({
   bet,
   setBet,
@@ -40,6 +43,15 @@ export default function BetControls({
     if (intervalRef.current) clearInterval(intervalRef.current);
   };
 
+  const modeAudioRef = useRef(null);
+  const betAudioRef = useRef(null);
+
+  const playSound = (ref) => {
+    if (ref.current) {
+      ref.current.currentTime = 0;
+      ref.current.play().catch(() => {});
+    }
+  };
   const stepBet = (dir) =>
     setBet(
       (prev) =>
@@ -110,7 +122,10 @@ export default function BetControls({
           <div>
             <div className="flex w-[160px] h-[40px] mt-3 items-center bg-black rounded-xl">
               <IncDecButton
-                onPointerDown={() => startHold(() => stepBet(-1))}
+                onPointerDown={() => {
+                  startHold(() => stepBet(-1));
+                  playSound(betAudioRef);
+                }}
                 onPointerUp={stopHold}
                 onPointerLeave={stopHold}
                 disabled={disabled}
@@ -122,7 +137,10 @@ export default function BetControls({
                 <p className="mb-2">€{formatMoney(bet)}</p>
               </div>
               <IncDecButton
-                onPointerDown={() => startHold(() => stepBet(1))}
+                onPointerDown={() => {
+                  startHold(() => stepBet(1));
+                  playSound(betAudioRef);
+                }}
                 onPointerUp={stopHold}
                 onPointerLeave={stopHold}
                 disabled={disabled}
@@ -136,11 +154,10 @@ export default function BetControls({
           <div>
             <div className="flex w-[160px] h-[40px] mt-3 items-center bg-black rounded-xl">
               <IncDecButton
-                onPointerDown={() =>
-                  startHold(() =>
-                    setWorms((prev) => Math.max(minWorms, prev - 1))
-                  )
-                }
+                onPointerDown={() => {
+                  startHold(() => setWorms((prev) => Math.max(minWorms, prev - 1)));
+                  playSound(betAudioRef);
+                }}
                 onPointerUp={stopHold}
                 onPointerLeave={stopHold}
                 disabled={disabled}
@@ -152,11 +169,10 @@ export default function BetControls({
                 <p className="mb-2">{worms}</p>
               </div>
               <IncDecButton
-                onPointerDown={() =>
-                  startHold(() =>
-                    setWorms((prev) => Math.min(maxWorms, prev + 1))
-                  )
-                }
+                onPointerDown={() => {
+                  startHold(() => setWorms((prev) => Math.max(minWorms, prev + 1)));
+                  playSound(betAudioRef);
+                }}
                 onPointerUp={stopHold}
                 onPointerLeave={stopHold}
                 disabled={disabled}
@@ -188,7 +204,10 @@ export default function BetControls({
               <div className="flex w-[190px] h-[40px] mt-3 items-center bg-black rounded-xl">
                 <IncDecButton
                   disabled={!canDecrement || openedApples === 0}
-                  onClick={() => selectBank(bankIndex - 1)}
+                  onClick={() => {
+                    selectBank(bankIndex - 1);
+                    playSound(betAudioRef);
+                  }}
                 >
                   −
                 </IncDecButton>
@@ -200,7 +219,10 @@ export default function BetControls({
                 </div>
                 <IncDecButton
                   disabled={!canIncrement || openedApples === 0}
-                  onClick={() => selectBank(bankIndex + 1)}
+                  onClick={() => {
+                    selectBank(bankIndex + 1);
+                    playSound(betAudioRef);
+                  }}
                 >
                   +
                 </IncDecButton>
@@ -210,7 +232,10 @@ export default function BetControls({
             <div>
               <div className="flex w-[160px] h-[40px] mt-3 items-center bg-black rounded-xl">
                 <IncDecButton
-                  onClick={() => stepRounds(-1)}
+                  onClick={() => {
+                    stepRounds(-1);
+                    playSound(betAudioRef);
+                  }}
                   disabled={disabled}
                 >
                   −
@@ -219,7 +244,10 @@ export default function BetControls({
                   <p className="text-[11px] mt-3">Rounds</p>
                   <p className="mb-2">{rounds}</p>
                 </div>
-                <IncDecButton onClick={() => stepRounds(1)} disabled={disabled}>
+                <IncDecButton onClick={() => {
+                  stepRounds(1);
+                  playSound(betAudioRef);
+                }} disabled={disabled}>
                   +
                 </IncDecButton>
               </div>
@@ -230,7 +258,10 @@ export default function BetControls({
           <div>
             <div className="flex gap-2">
               <button
-                onClick={() => setMode("manual")}
+                onClick={() => {
+                  setMode("manual");
+                  playSound(modeAudioRef);
+                }}
                 disabled={disabled}
                 className={`flex-1 w-[160px] py-2 rounded-lg font-medium transition relative group`}
               >
@@ -246,7 +277,10 @@ export default function BetControls({
                 </span>
               </button>
               <button
-                onClick={() => setMode("auto")}
+                onClick={() => {
+                  setMode("auto");
+                  playSound(modeAudioRef);
+                }}
                 disabled={disabled}
                 className={`flex-1 py-2 rounded-lg w-[20px] font-medium transition relative group`}
               >
@@ -268,7 +302,10 @@ export default function BetControls({
               {[3, 4, 5].map((size) => (
                 <button
                   key={size}
-                  onClick={() => setGridSizeClamped(size)}
+                  onClick={() => {
+                    setGridSizeClamped(size);
+                    playSound(modeAudioRef);
+                  }}
                   disabled={disabled}
                   className={`flex-1 text-white text-bold-2xl py-2 rounded-lg font-medium border-0 transition bg-no-repeat bg-center bg-contain
                     ${
@@ -284,6 +321,8 @@ export default function BetControls({
           </div>
         </div>
       </div>
+        <audio ref={modeAudioRef} src={MODE_SOUND} preload="auto" />
+        <audio ref={betAudioRef} src={BET_SOUND} preload="auto" />
     </div>
   );
 }

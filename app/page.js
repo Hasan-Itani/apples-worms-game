@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef} from "react";
 import Image from "next/image";
 
 import { useGameLogic } from "./hooks/useGameLogic";
@@ -14,13 +14,30 @@ import AudioMuteButton from "./components/ui/AudioMuteButton";
 import SettingsLauncherButton from "./components/ui/SettingsLauncherButton";
 import Loading from "./components/Loading";
 
+const COLLECT_SOUND = "/sounds/collect.mp3";
+const BANKIT_SOUND = "/sounds/modes.mp3";
+
+
 export default function HomePage() {
   const game = useGameLogic();
+
+  const collectAudioRef = useRef(null);
+  const bankAudioRef = useRef(null);
+
+  const playSound = (ref) => {
+    if (ref.current) {
+      ref.current.currentTime = 0;
+      ref.current.play().catch((err) => {
+        console.warn("Audio play failed:", err);
+      });
+    }
+  };
+
 
   // sprite audio
   const audio = useAudio();
   const [unlocked, setUnlocked] = useState(false);
-  const [loading, setLoading] = useState(true); // новый state
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const unlockOnce = () => {
@@ -89,7 +106,10 @@ export default function HomePage() {
               ) : (
                 <div className="flex gap-2 w-full">
                   <button
-                    onClick={game.collectApples}
+                    onClick={() => {
+                      playSound(collectAudioRef);
+                      game.collectApples();
+                    }}
                     disabled={game.openedApples === 0}
                     className={`flex-1 h-[80px] rounded text-lg font-bold text-white ${
                       game.openedApples === 0
@@ -101,7 +121,10 @@ export default function HomePage() {
                   </button>
 
                   <button
-                    onClick={() => game.bankIt(game.bankValue)}
+                    onClick={() => {
+                      playSound(bankAudioRef);
+                      game.bankIt(game.bankValue);
+                    }}
                     disabled={game.openedApples === 0}
                     className={`flex-1 h-[80px] rounded text-lg font-bold text-white ${
                       game.openedApples === 0
@@ -333,6 +356,8 @@ export default function HomePage() {
           </div>
         </div>
       </div>
+        <audio ref={collectAudioRef} src={COLLECT_SOUND} preload="auto" playsInline />
+        <audio ref={bankAudioRef} src={BANKIT_SOUND} preload="auto" playsInline />
     </div>
   );
 }

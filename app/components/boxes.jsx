@@ -5,6 +5,8 @@ import NextImage from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import { useEffect, useRef, useState, useMemo } from "react";
 
+const OPEN_TILE_SRC = "/sounds/open_tile.mp3";
+
 /**
  * PreloadedSequencer
  * - Preloads frames once on client (useEffect + window.Image)
@@ -237,6 +239,8 @@ export default function Boxes({
     );
   };
 
+  const audioRef = useRef(null);
+  <audio ref={audioRef} src={OPEN_TILE_SRC} preload="auto" />
   const handleBoxClickLocal = (index) => {
     if (mode === "auto") {
       handleBoxSelection(index);
@@ -254,6 +258,12 @@ export default function Boxes({
 
     setTimeout(() => {
       setShakingIndex(null);
+
+      if (audioRef.current) {
+        audioRef.current.currentTime = 0;
+        audioRef.current.play().catch(() => {});
+      }
+
       handleClick(index);
 
       setLoopFx((prev) => {
@@ -492,6 +502,7 @@ export default function Boxes({
           )}
         </AnimatePresence>
       </div>
+      <audio ref={audioRef} src={OPEN_TILE_SRC} preload="auto" />
     </div>
   );
 }
