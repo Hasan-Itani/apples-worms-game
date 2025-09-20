@@ -5,7 +5,7 @@ import { useState } from "react";
 
 /**
  * Pure image button that calls onClick() to open settings.
- * Uses /ui/tabs_hover.png and /ui/tabs_unhover.png
+ * Uses /tabs_hover.png and /tabs_unhover.png
  */
 export default function SettingsLauncherButton({
   size = 45,
@@ -18,14 +18,23 @@ export default function SettingsLauncherButton({
 
   return (
     <button
+      type="button"
       onClick={onClick}
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
-      className={`select-none inline-flex items-center justify-center ${className}`}
+      onFocus={() => setHover(true)}
+      onBlur={() => setHover(false)}
+      className={`select-none inline-flex items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 rounded ${className}`}
       aria-label={ariaLabel}
       style={{ width: size, height: size }}
     >
-      <Image src={src} alt="Settings" width={size} height={size} draggable={false} />
+      <Image
+        src={src}
+        alt="Settings"
+        width={size}
+        height={size}
+        draggable={false}
+      />
     </button>
   );
 }

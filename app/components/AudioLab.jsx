@@ -1,17 +1,129 @@
-// app/components/AudioLab.jsx
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 // If this file is under /app/components:
 import useAudio from "../hooks/useAudio";
 // If you moved AudioLab under /app/components/ui, use:
 // import useAudio from "../../hooks/useAudio";
 
+/**
+ * AudioLab — simple in‑app harness to test your audio sprite.
+ *
+ * Features
+ * - Loads /gameaudio.json and renders a searchable list of sprite segments
+ * - One‑click play: routes BG clips to music channel, others to SFX
+ * - Explicit SFX/Music buttons
+ * - Unlock button to satisfy mobile autoplay policies
+ */
+
 const BG_NAMES = new Set(["ambience", "basic_background"]);
+const SPRITE_INDEX_URL = "/gameaudio.json";
 
 // Local divider to avoid path issues
 function Divider() {
   return <div className="my-3 h-px w-full bg-sky-400/20" />;
+}
+
+function Row({ r, audio }) {
+  const isBg = BG_NAMES.has(r.name);
+  const actionsCls = [
+    "px-2 py-1 rounded text-[12px] font-bold active:scale-95",
+  ];
+  return (
+    <div
+      className={`grid grid-cols-[1fr_120px_120px_120px_260px] items-center`}
+    >
+      {/* Name column (sticky on horizontal scroll) */}
+      <div className="px-3 py-2 flex items-center gap-2 sticky left-0 z-10 bg-black/30 backdrop-blur-sm">
+        <span className="font-semibold">{r.name}</span>
+        {r.loop && (
+          <span className="inline-block px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/25 border border-amber-400/30">
+            loop
+          </span>
+        )}
+        {isBg && (
+          <span className="inline-block px-2 py-0.5 rounded text-[10px] font-bold bg-violet-500/25 border border-violet-400/30">
+            bg
+          </span>
+        )}
+      </div>
+
+      {/* Numbers (aligned) */}
+      <div className="px-3 py-2 text-right tabular-nums">
+        {r.start.toFixed(3)}s
+      </div>
+      <div className="px-3 py-2 text-right tabular-nums">
+        {r.end.toFixed(3)}s
+      </div>
+      <div className="px-3 py-2 text-right tabular-nums">
+        {r.duration.toFixed(3)}s
+      </div>
+
+      {/* Actions */}
+      <div className="px-3 py-2">
+        <div className="flex items-center justify-end gap-2">
+          <button
+            onClick={() => audio.play(r.name)}
+            className={[
+              ...actionsCls,
+              "bg-sky-600/80 hover:bg-sky-500/80",
+            ].join(" ")}
+            title="Auto (BG→Music, else SFX)"
+            type="button"
+          >
+            Play
+          </button>
+          <button
+            onClick={() => audio.playSfx?.(r.name)}
+            className={[
+              ...actionsCls,
+              "bg-blue-600/80 hover:bg-blue-500/80",
+            ].join(" ")}
+            title="Force SFX channel"
+            type="button"
+          >
+            SFX
+          </button>
+          <button
+            onClick={() => isBg && audio.playMusic?.(r.name)}
+            disabled={!isBg}
+            className={[
+              ...actionsCls,
+              isBg
+                ? "bg-violet-600/80 hover:bg-violet-500/80"
+                : "bg-white/10 cursor-not-allowed opacity-50",
+            ].join(" ")}
+            title={
+              isBg
+                ? "Force Music channel (loops BG)"
+                : "Music button is only for BG clips"
+            }
+            type="button"
+          >
+            Music
+          </button>
+          <button
+            onClick={() => isBg && audio.stopMusic?.()}
+            disabled={!isBg}
+            className={[
+              ...actionsCls,
+              isBg
+                ? "bg-rose-600/80 hover:bg-rose-500/80"
+                : "bg-white/10 cursor-not-allowed opacity-50",
+            ].join(" ")}
+            title={
+              isBg
+                ? "Stop background music"
+                : "Stop BG applies only to BG clips"
+            }
+            type="button"
+          >
+            Stop BG
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export default function AudioLab() {
@@ -20,22 +132,22 @@ export default function AudioLab() {
   const [q, setQ] = useState("");
   const [unlocked, setUnlocked] = useState(false);
 
+  // Load spritemap once
   useEffect(() => {
-    let canceled = false;
+    const ctrl = new AbortController();
     (async () => {
       try {
-        const res = await fetch("/gameaudio.json");
+        const res = await fetch(SPRITE_INDEX_URL, { signal: ctrl.signal });
         const j = await res.json();
-        if (!canceled) setMap(j?.spritemap || {});
-      } catch {
-        if (!canceled) setMap({});
+        setMap(j?.spritemap || {});
+      } catch (e) {
+        if (e.name !== "AbortError") setMap({});
       }
     })();
-    return () => {
-      canceled = true;
-    };
+    return () => ctrl.abort();
   }, []);
 
+  // Flatten & filter rows
   const rows = useMemo(() => {
     const items = Object.entries(map).map(([name, seg]) => {
       const start = Number(seg.start) || 0;
@@ -44,21 +156,19 @@ export default function AudioLab() {
       return { name, loop: !!seg.loop, start, end, duration };
     });
     items.sort((a, b) => a.start - b.start);
-    if (!q.trim()) return items;
     const k = q.trim().toLowerCase();
-    return items.filter((r) => r.name.toLowerCase().includes(k));
+    return k ? items.filter((r) => r.name.toLowerCase().includes(k)) : items;
   }, [map, q]);
 
-  const unlock = async () => {
+  const unlock = useCallback(async () => {
     try {
       await audio.unlock("basic_background");
       setUnlocked(true);
       audio.playSfx?.("button");
     } catch {}
-  };
+  }, [audio]);
 
-  // Fixed column widths so numbers line up across all rows
-  const COLS = "grid grid-cols-[1fr_120px_120px_120px_260px]";
+  const COLS = "grid grid-cols-[1fr_120px_120px_120px_260px]"; // fixed widths make numbers align
 
   return (
     <div className="w-full max-w-[1000px] mx-auto text-white">
@@ -72,10 +182,12 @@ export default function AudioLab() {
             onChange={(e) => setQ(e.target.value)}
             placeholder="Search sound…"
             className="px-3 py-2 rounded-md bg-white/10 border border-white/15 outline-none text-sm"
+            aria-label="Search sound name"
           />
           <button
             onClick={unlock}
             className="px-3 py-2 rounded-md text-sm font-bold bg-emerald-600/80 hover:bg-emerald-500/80 active:scale-95"
+            type="button"
           >
             {unlocked ? "Audio Unlocked" : "Unlock Audio"}
           </button>
@@ -85,11 +197,11 @@ export default function AudioLab() {
       <Divider />
 
       <div className="text-xs opacity-80 mb-3 text-center">
-        <span className="font-semibold">Play</span> auto-routes (BG → Music,
+        <span className="font-semibold">Play</span> auto‑routes (BG → Music,
         others → SFX).
-        <span className="font-semibold"> Music</span> is enabled only for BG
-        clips. Use <span className="font-semibold">Stop BG</span> to stop
-        background music.
+        <br />
+        <span className="font-semibold">Music</span> is single‑track; use{" "}
+        <span className="font-semibold">Stop BG</span> to stop it.
       </div>
 
       {/* Outer card with its own vertical scroll (keeps modal tidy) */}
@@ -100,10 +212,7 @@ export default function AudioLab() {
           <div className="min-w-[940px]">
             {/* Header */}
             <div className={`${COLS} gap-0 text-xs bg-white/5`}>
-              <div
-                className="px-3 py-2 font-bold text-sky-300 sticky left-0 z-20 bg-white/5 backdrop-blur-sm"
-                // sticky keeps "Name" visible while scrolling horizontally
-              >
+              <div className="px-3 py-2 font-bold text-sky-300 sticky left-0 z-20 bg-white/5 backdrop-blur-sm">
                 Name
               </div>
               <div className="px-3 py-2 font-bold text-sky-300 text-right">
@@ -123,91 +232,7 @@ export default function AudioLab() {
             {/* BODY (with optional vertical scroll if list is long) */}
             <div className="max-h-[60vh] overflow-y-auto divide-y divide-white/10">
               {rows.map((r) => (
-                <div key={r.name} className={`${COLS} items-center`}>
-                  {/* Name column (sticky on horizontal scroll) */}
-                  <div className="px-3 py-2 flex items-center gap-2 sticky left-0 z-10 bg-black/30 backdrop-blur-sm">
-                    <span className="font-semibold">{r.name}</span>
-                    {r.loop && (
-                      <span className="inline-block px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/25 border border-amber-400/30">
-                        loop
-                      </span>
-                    )}
-                    {BG_NAMES.has(r.name) && (
-                      <span className="inline-block px-2 py-0.5 rounded text-[10px] font-bold bg-violet-500/25 border border-violet-400/30">
-                        bg
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Numbers (aligned) */}
-                  <div className="px-3 py-2 text-right tabular-nums">
-                    {r.start.toFixed(3)}s
-                  </div>
-                  <div className="px-3 py-2 text-right tabular-nums">
-                    {r.end.toFixed(3)}s
-                  </div>
-                  <div className="px-3 py-2 text-right tabular-nums">
-                    {r.duration.toFixed(3)}s
-                  </div>
-
-                  {/* Actions */}
-                  <div className="px-3 py-2">
-                    <div className="flex items-center justify-end gap-2">
-                      <button
-                        onClick={() => audio.play(r.name)}
-                        className="px-2 py-1 rounded bg-sky-600/80 hover:bg-sky-500/80 text-[12px] font-bold active:scale-95"
-                        title="Auto (BG→Music, else SFX)"
-                      >
-                        Play
-                      </button>
-                      <button
-                        onClick={() => audio.playSfx?.(r.name)}
-                        className="px-2 py-1 rounded bg-blue-600/80 hover:bg-blue-500/80 text-[12px] font-bold active:scale-95"
-                        title="Force SFX channel"
-                      >
-                        SFX
-                      </button>
-                      <button
-                        onClick={() =>
-                          BG_NAMES.has(r.name) && audio.playMusic?.(r.name)
-                        }
-                        disabled={!BG_NAMES.has(r.name)}
-                        className={[
-                          "px-2 py-1 rounded text-[12px] font-bold active:scale-95",
-                          BG_NAMES.has(r.name)
-                            ? "bg-violet-600/80 hover:bg-violet-500/80"
-                            : "bg-white/10 cursor-not-allowed opacity-50",
-                        ].join(" ")}
-                        title={
-                          BG_NAMES.has(r.name)
-                            ? "Force Music channel (loops BG)"
-                            : "Music button is only for BG clips"
-                        }
-                      >
-                        Music
-                      </button>
-                      <button
-                        onClick={() =>
-                          BG_NAMES.has(r.name) && audio.stopMusic?.()
-                        }
-                        disabled={!BG_NAMES.has(r.name)}
-                        className={[
-                          "px-2 py-1 rounded text-[12px] font-bold active:scale-95",
-                          BG_NAMES.has(r.name)
-                            ? "bg-rose-600/80 hover:bg-rose-500/80"
-                            : "bg-white/10 cursor-not-allowed opacity-50",
-                        ].join(" ")}
-                        title={
-                          BG_NAMES.has(r.name)
-                            ? "Stop background music"
-                            : "Stop BG applies only to BG clips"
-                        }
-                      >
-                        Stop BG
-                      </button>
-                    </div>
-                  </div>
-                </div>
+                <Row key={r.name} r={r} audio={audio} />
               ))}
 
               {rows.length === 0 && (
@@ -222,12 +247,13 @@ export default function AudioLab() {
         {/* Footer */}
         <div className="flex items-center justify-between p-3 bg-white/5">
           <div className="text-xs opacity-80">
-            Horizontal scroll keeps columns aligned. Music is single-track; use{" "}
+            Horizontal scroll keeps columns aligned. Music is single‑track; use{" "}
             <span className="font-semibold">Stop Music</span> to silence it.
           </div>
           <button
             onClick={() => audio.stopMusic?.()}
             className="px-3 py-1.5 rounded bg-red-600/80 hover:bg-red-500/80 text-sm font-bold active:scale-95"
+            type="button"
           >
             Stop Music
           </button>

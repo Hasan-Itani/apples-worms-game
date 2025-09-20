@@ -1,7 +1,6 @@
 "use client";
 
 import { motion, AnimatePresence, useMotionValue } from "framer-motion";
-import { computeBaseJackpotValues } from "../utils/jackpots";
 import {
   useRef,
   useState,
@@ -10,7 +9,19 @@ import {
   useCallback,
   useMemo,
 } from "react";
+import { computeBaseJackpotValues } from "../utils/jackpots";
 
+/**
+ * JackpotBar — shows two synchronized, draggable rows:
+ * 1) Effective jackpot at each step
+ * 2) Banked amounts per step
+ *
+ * Notes (refactor):
+ * - De‑duplicated drag logic via <RowScroller/> subcomponent that shares the
+ *   same motion value `x` and bounds across the two rows.
+ * - Centralized value normalization and effective values calculation.
+ * - Added small helpers and comments for readability.
+ */
 export default function JackpotBar({
   gridSize,
   worms,
@@ -19,18 +30,18 @@ export default function JackpotBar({
   effectiveJackpotValues: effectiveJackpotValuesProp,
   bankValues,
   openedApples = 0,
+  currency = "€", // allow overriding (e.g., "$")
 }) {
-  const containerRef = useRef(null);
-  const topContentRef = useRef(null);
-  const botContentRef = useRef(null);
-
-  const x = useMotionValue(0);
-  const [bounds, setBounds] = useState({ min: 0, max: 0 });
-
+  /* =========================
+   * Derived counts
+   * ========================= */
   const totalBoxes = gridSize * gridSize;
   const apples = Math.max(totalBoxes - worms, 0);
 
-  const computedBaseJackpotValues = useMemo(() => {
+  /* =========================
+   * Base jackpot values (fallback to compute)
+   * ========================= */
+  const baseJackpots = useMemo(() => {
     if (
       Array.isArray(jackpotValuesProp) &&
       jackpotValuesProp.length === apples
@@ -40,34 +51,40 @@ export default function JackpotBar({
     return computeBaseJackpotValues(bet, worms, gridSize).values;
   }, [bet, worms, gridSize, apples, jackpotValuesProp]);
 
-  const bankValuesNormalized = useMemo(() => {
+  /* =========================
+   * Banked values normalized to apples length
+   * ========================= */
+  const banked = useMemo(() => {
     if (!Array.isArray(bankValues)) return Array(apples).fill(0);
     return bankValues.slice(0, apples).map((v) => +(v || 0).toFixed(2));
   }, [bankValues, apples]);
 
-  const effectiveValues = useMemo(() => {
+  /* =========================
+   * Effective jackpots (prop wins; else base - banked)
+   * ========================= */
+  const effective = useMemo(() => {
     if (
       Array.isArray(effectiveJackpotValuesProp) &&
       effectiveJackpotValuesProp.length === apples
     ) {
       return effectiveJackpotValuesProp.map((v) => +v);
     }
+    return baseJackpots.map((val, i) =>
+      Math.max(0, +(val - (banked[i] || 0)).toFixed(2))
+    );
+  }, [effectiveJackpotValuesProp, baseJackpots, banked, apples]);
 
-    return computedBaseJackpotValues.map((val, i) => {
-      const bankedAtStep = bankValuesNormalized[i] || 0;
-      const remaining = val - bankedAtStep;
-      return Math.max(0, +remaining.toFixed(2));
-    });
-  }, [
-    effectiveJackpotValuesProp,
-    computedBaseJackpotValues,
-    bankValuesNormalized,
-    apples,
-  ]);
+  /* =========================
+   * Shared drag state & bounds
+   * ========================= */
+  const x = useMotionValue(0);
+  const [bounds, setBounds] = useState({ min: 0, max: 0 });
+  const wrapRef = useRef(null);
+  const topRef = useRef(null);
 
-  const recalc = useCallback(() => {
-    const wrap = containerRef.current;
-    const content = topContentRef.current;
+  const recalcBounds = useCallback(() => {
+    const wrap = wrapRef.current;
+    const content = topRef.current; // width is the same for both rows
     if (!wrap || !content) return;
 
     const wrapW = wrap.clientWidth;
@@ -77,42 +94,70 @@ export default function JackpotBar({
       setBounds({ min: 0, max: 0 });
       x.set(0);
     } else {
-      setBounds({ min: wrapW - contentW, max: 0 });
+      const min = wrapW - contentW; // negative
+      setBounds({ min, max: 0 });
       const cur = x.get();
       if (cur > 0) x.set(0);
-      if (cur < wrapW - contentW) x.set(wrapW - contentW);
+      if (cur < min) x.set(min);
     }
   }, [x]);
 
   useLayoutEffect(() => {
-    recalc();
-  }, [recalc, effectiveValues.length]);
+    recalcBounds();
+  }, [recalcBounds, effective.length]);
 
   useEffect(() => {
-    const onResize = () => recalc();
+    const onResize = () => recalcBounds();
     window.addEventListener("resize", onResize);
-    const t = setTimeout(recalc, 0);
+    const t = setTimeout(recalcBounds, 0);
     return () => {
       window.removeEventListener("resize", onResize);
       clearTimeout(t);
     };
-  }, [recalc, effectiveValues.length, openedApples]);
+  }, [recalcBounds, effective.length, openedApples]);
 
+  /* =========================
+   * Item visuals
+   * ========================= */
   const itemVariants = {
     hidden: { opacity: 0, y: -8 },
     visible: { opacity: 1, y: 0 },
     exit: { opacity: 0, y: 8 },
   };
 
-  const itemClass = (i, current) => {
-    if (current)
-      return "text-[20px] bg-orange-500 text-white border-2 border-yellow-700";
-    if (i < openedApples - 1) return "bg-black text-white text-[20px]";
-    return "bg-black text-white text-[20px]";
-  };
+  const effClass = (i, current) =>
+    current
+      ? "text-[20px] bg-orange-500 text-white border-2 border-yellow-700"
+      : "bg-black text-white text-[20px]";
+
+  /* =========================
+   * Reusable row scroller
+   * ========================= */
+  function RowScroller({ innerRef, children }) {
+    return (
+      <motion.div
+        ref={innerRef}
+        className="flex gap-1 p-2 cursor-grab active:cursor-grabbing will-change-transform"
+        drag="x"
+        style={{ x }}
+        dragConstraints={{ left: bounds.min, right: bounds.max }}
+        dragMomentum={false}
+        dragElastic={0.05}
+        onDragEnd={() => {
+          const cur = x.get();
+          if (cur > 0) x.set(0);
+          else if (cur < bounds.min) x.set(bounds.min);
+        }}
+        aria-roledescription="scrollbar"
+      >
+        {children}
+      </motion.div>
+    );
+  }
 
   return (
-    <div className="flex flex-col items-center w-full max-w-md">
+    <div className="flex flex-col items-center w-full max-w-md select-none">
+      {/* Title */}
       <div className="text-center">
         <h2 className="text-xl font-extrabold tracking-widest text-gray-800">
           JACKPOT
@@ -121,25 +166,12 @@ export default function JackpotBar({
 
       {/* TOP (effective jackpots) */}
       <div
-        ref={containerRef}
+        ref={wrapRef}
         className="w-full overflow-hidden relative bg-[url('/bets.png')] bg-cover"
       >
-        <motion.div
-          ref={topContentRef}
-          className="flex gap-1 p-2 cursor-grab active:cursor-grabbing will-change-transform"
-          drag="x"
-          style={{ x }}
-          dragConstraints={{ left: bounds.min, right: bounds.max }}
-          dragMomentum={false}
-          dragElastic={0.05}
-          onDragEnd={() => {
-            const cur = x.get();
-            if (cur > 0) x.set(0);
-            else if (cur < bounds.min) x.set(bounds.min);
-          }}
-        >
+        <RowScroller innerRef={topRef}>
           <AnimatePresence initial={false}>
-            {effectiveValues.map((amount, i) => {
+            {effective.map((amount, i) => {
               const isCurrent = i === Math.max(0, openedApples - 1);
               return (
                 <motion.div
@@ -149,42 +181,32 @@ export default function JackpotBar({
                   animate="visible"
                   exit="exit"
                   transition={{ type: "spring", stiffness: 300, damping: 25 }}
-                  className={`min-w-[88px] rounded-lg text-center text-sm font-bold border ${itemClass(
+                  className={`min-w-[88px] rounded-lg text-center text-sm font-bold border ${effClass(
                     i,
                     isCurrent
                   )}`}
                 >
-                  €{amount.toFixed(2)}
+                  {currency}
+                  {amount.toFixed(2)}
                 </motion.div>
               );
             })}
           </AnimatePresence>
-        </motion.div>
+        </RowScroller>
       </div>
 
       {/* BOTTOM label */}
       <div className="text-center -mt-1">
-        <span className="text-xs font-extrabold tracking-widest text-gray-800">BANKED</span>
+        <span className="text-xs font-extrabold tracking-widest text-gray-800">
+          BANKED
+        </span>
       </div>
 
       {/* BOTTOM (banked per step) */}
       <div className="w-full overflow-hidden relative bg-[url('/bg_bets.png')] bg-cover">
-        <motion.div
-          ref={botContentRef}
-          className="flex gap-1 p-2 cursor-grab active:cursor-grabbing will-change-transform"
-          drag="x"
-          style={{ x }}
-          dragConstraints={{ left: bounds.min, right: bounds.max }}
-          dragMomentum={false}
-          dragElastic={0.05}
-          onDragEnd={() => {
-            const cur = x.get();
-            if (cur > 0) x.set(0);
-            else if (cur < bounds.min) x.set(bounds.min);
-          }}
-        >
+        <RowScroller>
           <AnimatePresence initial={false}>
-            {bankValuesNormalized.map((amount, i) => (
+            {banked.map((amount, i) => (
               <motion.div
                 key={`bank-${i}`}
                 variants={itemVariants}
@@ -198,11 +220,12 @@ export default function JackpotBar({
                     : "bg-green-200 text-black"
                 }`}
               >
-                €{(amount || 0).toFixed(2)}
+                {currency}
+                {(amount || 0).toFixed(2)}
               </motion.div>
             ))}
           </AnimatePresence>
-        </motion.div>
+        </RowScroller>
       </div>
     </div>
   );

@@ -2,17 +2,33 @@
 import { useCallback, useState } from "react";
 
 /**
- * Auto-play engine for Apples & Worms
+ * Auto‑play engine for Apples & Worms.
+ *
+ * Responsibilities
+ * - Orchestrates multi‑round auto play.
+ * - Deducts bet at the start of each round.
+ * - Applies bet adjustment strategy after win/loss.
+ * - Exposes a stepper observed by the boxes engine (index + round flags).
+ *
+ * API
+ * - startAutoPlay(rounds)
+ * - stopAutoPlay()
+ * - nextRound(limitFromCaller?)
+ * - handleGameResult(didWin[, payout])  // optional 2nd arg kept for compatibility
  */
 export function useAutoGame(balance, bet, setBet, setBalance) {
+  /**
+   * Tunables (could be moved to utils/constants.js)
+   */
   const MAX_BET = 500;
-  const MAX_PCT = 100; // clamp % between 0–100
+  const MAX_PCT = 100; // clamp % between 0-100
 
+  // Engine state
   const [gameActive, setGameActive] = useState(false);
   const [currentRound, setCurrentRound] = useState(0);
   const [maxRounds, setMaxRounds] = useState(10);
 
-  // Strategy
+  // Strategy (% increases)
   const [afterWin, _setAfterWin] = useState(25); // %
   const [afterLoss, _setAfterLoss] = useState(50); // %
   const [stopOnWin, setStopOnWin] = useState(false);
@@ -25,11 +41,27 @@ export function useAutoGame(balance, bet, setBet, setBalance) {
   // UI
   const [originalBet, setOriginalBet] = useState(bet);
 
-  // clamp between 0 and 100 only
+  /* =========================
+   * Helpers (DRY & safety)
+   * ========================= */
   const clampPct = (v) => {
     const n = Number(v);
     if (!Number.isFinite(n)) return 0;
     return Math.max(0, Math.min(MAX_PCT, Math.round(n)));
+  };
+
+  const clampBet = (raw) => {
+    const n = Number(raw);
+    if (!Number.isFinite(n) || n <= 0) return 0;
+    return Math.min(MAX_BET, n);
+  };
+
+  const applyPctIncrease = (value, pct) => {
+    const base = Number(value) || 0;
+    const inc = clampPct(pct) / 100;
+    if (inc <= 0) return Math.min(MAX_BET, base);
+    const next = +(base * (1 + inc)).toFixed(2);
+    return Math.min(MAX_BET, next);
   };
 
   const setAfterWin = (valOrFn) => {
@@ -43,6 +75,9 @@ export function useAutoGame(balance, bet, setBet, setBalance) {
     );
   };
 
+  /* =========================
+   * Controls
+   * ========================= */
   const stopAutoPlay = useCallback(() => {
     setGameActive(false);
     setRoundInProgress(false);
@@ -50,16 +85,11 @@ export function useAutoGame(balance, bet, setBet, setBalance) {
     setCurrentBoxIndex(0);
   }, []);
 
-  // Arm a round: deduct bet and start stepping
+  /** Arm a round: deduct bet and start stepping */
   const armRound = useCallback(
     (roundNumber) => {
-      const currentBetRaw = Number(bet);
-      const currentBet =
-        !Number.isFinite(currentBetRaw) || currentBetRaw <= 0
-          ? 0
-          : Math.min(MAX_BET, currentBetRaw);
-
-      if (currentBetRaw > MAX_BET) setBet(MAX_BET);
+      const currentBet = clampBet(bet);
+      if (Number(bet) > MAX_BET) setBet(MAX_BET); // normalize UI if needed
 
       if (currentBet <= 0) {
         console.warn("[auto] invalid bet, stopping.");
@@ -71,6 +101,7 @@ export function useAutoGame(balance, bet, setBet, setBalance) {
         stopAutoPlay();
         return false;
       }
+
       setBalance((b) => b - currentBet);
       setCurrentRound(roundNumber);
       setCurrentBoxIndex(0);
@@ -83,10 +114,9 @@ export function useAutoGame(balance, bet, setBet, setBalance) {
   const startAutoPlay = useCallback(
     (rounds) => {
       const r = Math.max(1, Number(rounds) || 1);
-
       if (Number(bet) > MAX_BET) setBet(MAX_BET);
 
-      setOriginalBet(Math.min(Number(bet) || 0, MAX_BET));
+      setOriginalBet(clampBet(bet));
       setMaxRounds(r);
       setGameActive(true);
       armRound(1);
@@ -94,9 +124,13 @@ export function useAutoGame(balance, bet, setBet, setBalance) {
     [armRound, bet, setBet]
   );
 
-  // Called by useGameLogic when a round completes
+  /**
+   * Called by useGameLogic/useBoxesGame when a round completes.
+   * didWin: boolean (true if payout > 0)
+   * payout (optional): number, ignored here but accepted for compatibility
+   */
   const handleGameResult = useCallback(
-    (didWin) => {
+    (didWin /*, payout */) => {
       setRoundInProgress(false);
 
       if (didWin) {
@@ -104,28 +138,13 @@ export function useAutoGame(balance, bet, setBet, setBalance) {
           setGameActive(false);
           return;
         }
-        const inc = (Number(afterWin) || 0) / 100;
-        if (inc > 0) {
-          setBet((prev) => {
-            const base = Number(prev) || 0;
-            if (base >= MAX_BET) return MAX_BET;
-            const next = +(base * (1 + inc)).toFixed(2);
-            return Math.min(MAX_BET, next);
-          });
-        }
+        setBet((prev) => applyPctIncrease(prev, afterWin));
       } else {
         if (stopOnLoss) {
           setGameActive(false);
           return;
         }
-        const inc = (Number(afterLoss) || 0) / 100;
-        if (inc > 0) {
-          setBet((prev) => {
-            const base = Number(prev) || 0;
-            const next = +(base * (1 + inc)).toFixed(2);
-            return Math.min(MAX_BET, next);
-          });
-        }
+        setBet((prev) => applyPctIncrease(prev, afterLoss));
       }
     },
     [afterWin, afterLoss, setBet, stopOnWin, stopOnLoss]
@@ -148,6 +167,9 @@ export function useAutoGame(balance, bet, setBet, setBalance) {
     [currentRound, gameActive, maxRounds, armRound, stopAutoPlay]
   );
 
+  /* =========================
+   * Exposed API
+   * ========================= */
   return {
     // flags
     gameActive,
@@ -165,7 +187,7 @@ export function useAutoGame(balance, bet, setBet, setBalance) {
     stopOnLoss,
     setStopOnLoss,
 
-    // stepper
+    // stepper observed by boxes engine
     currentBoxIndex,
     setCurrentBoxIndex,
     roundInProgress,

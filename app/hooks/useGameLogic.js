@@ -1,66 +1,113 @@
 // hooks/useGameLogic.js
 "use client";
 
-import { useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useBalance } from "./useBalance";
 import { useGrid } from "./useGrid";
 import { useManualGame } from "./useManualGame";
 import { useAutoGame } from "./useAutoGame";
 import { useBoxesGame } from "./useBoxesGame";
+// Optional: centralize UI constants
+// import { ROUND_STEPS } from "../utils/constants";
 
+/**
+ * Orchestrates all game hooks and exposes a unified API to the UI.
+ *
+ * Goals of this refactor:
+ * - Remove duplicate reset logic via small helpers
+ * - Stabilize callback identities with useCallback (reduces child re-renders)
+ * - Add clear docs for responsibilities & cross-hook data flow
+ * - Keep behavior identical to the original unless noted
+ */
 export function useGameLogic() {
+  /* =========================
+   * 1) Sub-hooks (state domains)
+   * ========================= */
   const balanceHook = useBalance();
   const gridHook = useGrid();
+
   const manualHook = useManualGame(
     balanceHook.balance,
     balanceHook.setBalance,
     balanceHook.bet
   );
 
-  // popup state
+  // Popup state
   const [gameOver, setGameOver] = useState(false);
   const [finalValue, setFinalValue] = useState(0);
 
-  // In useGameLogic.js, update this line:
+  // Auto mode engine
   const autoHook = useAutoGame(
     balanceHook.balance,
     balanceHook.bet,
     balanceHook.setBet,
     balanceHook.setBalance
   );
+
+  // Mode switching
   const [mode, _setMode] = useState("manual");
-  const setMode = (newMode) => {
-    _setMode(newMode);
-    boxesHook.resetGame();
-    setSelectedBoxes([]);
-    setGameOver(false);
-    setFinalValue(0);
-  };
+
+  // Rounds & presets (kept local; could be hoisted to constants.js if reused)
   const [rounds, setRounds] = useState(10);
-  const roundSteps = [5, 10, 15, 20, 30, 40, 50, 100];
+  const roundSteps = useMemo(() => [5, 10, 15, 20, 30, 40, 50, 100], []);
 
   // Box selection for auto mode
   const [selectedBoxes, setSelectedBoxes] = useState([]);
 
-  const onBoxesFinished = (amount) => {
-    // always show popup for manual games, not for auto games
-    if (mode === "manual") {
-      setFinalValue(amount);
-      setGameOver(true);
-    }
+  // Bank value for UI (actual apply may happen elsewhere)
+  const [bankValue, setBankValue] = useState(0);
 
-    // credit the balance only if amount > 0
-    if (amount > 0) {
-      balanceHook.setBalance((b) => b + amount);
-      if (mode === "auto") {
-        autoHook.handleGameResult(true, amount);
+  /* =========================
+   * 2) Small helpers to avoid duplication
+   * ========================= */
+  const clearGameOver = useCallback(() => {
+    setGameOver(false);
+    setFinalValue(0);
+  }, []);
+
+  const hardResetRunState = useCallback(() => {
+    // Reset boxes engine + UI overlays
+    boxesHook.resetGame();
+    clearGameOver();
+    setSelectedBoxes([]);
+    // Also reset auto progress counters
+    autoHook.setCurrentBoxIndex(0);
+    autoHook.setRoundInProgress(false);
+  }, [autoHook, clearGameOver]);
+
+  const setMode = useCallback(
+    (newMode) => {
+      _setMode(newMode);
+      hardResetRunState();
+      // Stop any running engines
+      manualHook.stopManualGame?.();
+      autoHook.stopAutoPlay?.();
+    },
+    [autoHook, hardResetRunState, manualHook]
+  );
+
+  /* =========================
+   * 3) Boxes engine & cross-domain handlers
+   * ========================= */
+  const onBoxesFinished = useCallback(
+    (amount) => {
+      // Always credit positive winnings
+      if (amount > 0) {
+        balanceHook.setBalance((b) => b + amount);
       }
-    } else {
+
+      // Auto vs Manual side-effects
       if (mode === "auto") {
-        autoHook.handleGameResult(false, amount);
+        autoHook.handleGameResult(amount > 0, amount);
+        // Do not show popup in auto mode (as per original)
+      } else {
+        // Manual: show popup regardless; amount may be 0
+        setFinalValue(amount);
+        setGameOver(true);
       }
-    }
-  };
+    },
+    [autoHook, balanceHook, mode]
+  );
 
   const boxesHook = useBoxesGame(
     gridHook.gridSize,
@@ -80,66 +127,79 @@ export function useGameLogic() {
     rounds
   );
 
-  const [bankValue, setBankValue] = useState(0);
+  /* =========================
+   * 4) Public actions (stabilized via useCallback)
+   * ========================= */
+  const startGame = useCallback(
+    (...args) => {
+      clearGameOver();
+      manualHook.startGame?.(...args);
+    },
+    [clearGameOver, manualHook]
+  );
 
-  const startGame = (...args) => {
-    setGameOver(false);
-    setFinalValue(0);
-    if (typeof manualHook.startGame === "function")
-      manualHook.startGame(...args);
-  };
-
-  const startAutoPlay = () => {
+  const startAutoPlay = useCallback(() => {
     if (selectedBoxes.length === 0) {
+      // Preserve original UX
       alert("Please select boxes first!");
       return;
     }
-    console.log("Starting auto play with selected boxes:", selectedBoxes);
     autoHook.startAutoPlay(rounds);
-  };
+  }, [autoHook, rounds, selectedBoxes.length]);
 
-  const stopAutoPlay = () => {
+  const stopAutoPlay = useCallback(() => {
     autoHook.stopAutoPlay();
     boxesHook.resetGame();
     setSelectedBoxes([]);
-  };
+  }, [autoHook, boxesHook]);
 
-  const collectApples = () => {
+  const collectApples = useCallback(() => {
     const winnings = boxesHook.collectApples();
     if (winnings > 0) {
       balanceHook.setBalance((b) => b + winnings);
-      // also show a popup for manual collect
       setFinalValue(winnings);
       setGameOver(true);
     }
     manualHook.stopManualGame();
-  };
+  }, [balanceHook, boxesHook, manualHook]);
 
-  const clearGameOver = () => {
-    setGameOver(false);
-    setFinalValue(0);
-  };
-
+  /* =========================
+   * 5) Exposed API
+   * ========================= */
   return {
+    // Balance / betting
     ...balanceHook,
+    // Grid config & probabilities
     ...gridHook,
+
+    // Mode
     mode,
     setMode,
+
+    // Rounds & presets
     rounds,
     setRounds,
     roundSteps,
+
+    // Engines
     ...manualHook,
     ...autoHook,
     ...boxesHook,
+
+    // Actions
+    startGame,
+    startAutoPlay,
+    stopAutoPlay,
     collectApples,
+
+    // Popup & banking UI state
     bankValue,
     setBankValue,
     gameOver,
     finalValue,
     clearGameOver,
-    startGame,
-    startAutoPlay,
-    stopAutoPlay,
+
+    // Auto-mode selection
     selectedBoxes,
     setSelectedBoxes,
   };

@@ -1,5 +1,15 @@
 "use client";
 
+/**
+ * GameStats panel displays key probabilities and counters for the current game.
+ *
+ * Props:
+ * - applesRemaining: number of apples left in the grid
+ * - chanceOfWorm: % probability that next pick is a worm
+ * - chanceOfApple: % probability that next pick is an apple
+ * - openedTiles: how many tiles the player has already revealed
+ * - totalBoxes: total number of tiles in the grid
+ */
 export default function GameStats({
   applesRemaining,
   chanceOfWorm,
@@ -22,16 +32,12 @@ export default function GameStats({
       {/* Worm Risk */}
       <div className="flex justify-between items-center">
         <span className="text-base text-white font-semibold">Worm Risk</span>
-        <span className="text-red-400 font-bold text-lg">
-          {chanceOfWorm}%
-        </span>
+        <span className="text-red-400 font-bold text-lg">{chanceOfWorm}%</span>
       </div>
 
       {/* Opened Tiles */}
       <div className="flex justify-between items-center">
-        <span className="text-base text-white font-semibold">
-          Opened Tiles
-        </span>
+        <span className="text-base text-white font-semibold">Opened Tiles</span>
         <span className="font-bold text-lg text-blue-300">
           {openedTiles}/{totalBoxes}
         </span>

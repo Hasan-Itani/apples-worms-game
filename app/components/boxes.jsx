@@ -3,7 +3,13 @@
 import Jackpot from "./JackpotBar";
 import NextImage from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
-import { useEffect, useRef, useState, useMemo } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  useMemo,
+  useCallback,
+} from "react";
 
 const OPEN_TILE_SRC = "/sounds/open_tile.mp3";
 
@@ -29,20 +35,15 @@ function PreloadedSequencer({
   const loadedSrcsRef = useRef([]);
   const readyRef = useRef(false);
 
+  // Preload sprite frames
   useEffect(() => {
     let cancelled = false;
     readyRef.current = false;
     loadedSrcsRef.current = [];
-
     if (typeof window === "undefined") return;
 
     const preload = async () => {
-      const list = [];
-      for (let i = 1; i <= frames; i++) {
-        const src = `${prefix}${i}${ext}`;
-        list.push(src);
-      }
-
+      const list = Array.from({ length: frames }, (_, i) => `${prefix}${i + 1}${ext}`);
       await Promise.all(
         list.map(
           (src) =>
@@ -62,15 +63,14 @@ function PreloadedSequencer({
     };
 
     preload();
-
     return () => {
       cancelled = true;
     };
   }, [frames, prefix, ext]);
 
+  // Run sequencer when active
   useEffect(() => {
-    if (!active) return;
-    if (!imgRef.current) return;
+    if (!active || !imgRef.current) return;
 
     let stopped = false;
     startRef.current = 0;
@@ -81,7 +81,6 @@ function PreloadedSequencer({
         rafRef.current = requestAnimationFrame(run);
         return;
       }
-
       if (!startRef.current) startRef.current = t;
       const elapsed = t - startRef.current;
 
@@ -90,13 +89,11 @@ function PreloadedSequencer({
 
       if (mode === "loop") {
         fi = fi % frames;
-      } else {
-        if (fi >= frames) {
-          fi = lastIndex;
-          if (!stopped) {
-            stopped = true;
-            onDone && onDone();
-          }
+      } else if (fi >= frames) {
+        fi = lastIndex;
+        if (!stopped) {
+          stopped = true;
+          onDone && onDone();
         }
       }
 
@@ -140,30 +137,13 @@ function PreloadedSequencer({
   );
 }
 
-function LoopFX({ active }) {
-  return (
-    <PreloadedSequencer
-      active={active}
-      mode="loop"
-      frames={9}
-      fps={20}
-      scalePct={115}
-    />
-  );
-}
+const LoopFX = ({ active }) => (
+  <PreloadedSequencer active={active} mode="loop" frames={9} fps={20} scalePct={115} />
+);
 
-function RevealFX({ active, onDone }) {
-  return (
-    <PreloadedSequencer
-      active={active}
-      mode="once"
-      frames={9}
-      fps={30}
-      scalePct={180}
-      onDone={onDone}
-    />
-  );
-}
+const RevealFX = ({ active, onDone }) => (
+  <PreloadedSequencer active={active} mode="once" frames={9} fps={30} scalePct={180} onDone={onDone} />
+);
 
 export default function Boxes({
   grid,
@@ -197,10 +177,10 @@ export default function Boxes({
   const [openingIndex, setOpeningIndex] = useState(null);
 
   const playedRevealRef = useRef(new Set());
-
   const prevManualRunningRef = useRef(manualRunning);
   const prevGridRef = useRef(grid);
 
+  // Popup & reveal toggle from external gameOver flag
   useEffect(() => {
     if (gameOver) {
       setRevealAll(true);
@@ -208,6 +188,7 @@ export default function Boxes({
     }
   }, [gameOver]);
 
+  // Reset transient animation state on new manual run
   useEffect(() => {
     if (!prevManualRunningRef.current && manualRunning) {
       setShakingIndex(null);
@@ -221,59 +202,65 @@ export default function Boxes({
     prevManualRunningRef.current = manualRunning;
   }, [manualRunning]);
 
+  // Clear auto selections if switching to manual
   useEffect(() => {
     if (mode === "manual") setSelectedBoxes([]);
   }, [mode, setSelectedBoxes]);
 
-  const handleClosePopup = () => {
+  const handleClosePopup = useCallback(() => {
     setShowPopup(false);
     setRevealAll(false);
     onPopupClose && onPopupClose();
-  };
+  }, [onPopupClose]);
 
-  const handleBoxSelection = (index) => {
-    if (mode !== "auto" || gameActive) return;
-    if (animLock) return;
-    setSelectedBoxes((prev) =>
-      prev.includes(index) ? prev.filter((i) => i !== index) : [...prev, index]
-    );
-  };
+  const handleBoxSelection = useCallback(
+    (index) => {
+      if (mode !== "auto" || gameActive || animLock) return;
+      setSelectedBoxes((prev) =>
+        prev.includes(index) ? prev.filter((i) => i !== index) : [...prev, index]
+      );
+    },
+    [mode, gameActive, animLock, setSelectedBoxes]
+  );
 
+  // SFX for opening tile
   const audioRef = useRef(null);
-  <audio ref={audioRef} src={OPEN_TILE_SRC} preload="auto" />
-  const handleBoxClickLocal = (index) => {
-    if (mode === "auto") {
-      handleBoxSelection(index);
-      return;
-    }
-    if (!manualRunning) return;
-    if (animLock) return;
-    if (grid[index] !== "❓") return;
 
-    setAnimLock(true);
-    setOpeningIndex(index);
-
-    setShakingIndex(index);
-    setLoopFx((prev) => new Set([...prev, index]));
-
-    setTimeout(() => {
-      setShakingIndex(null);
-
-      if (audioRef.current) {
-        audioRef.current.currentTime = 0;
-        audioRef.current.play().catch(() => {});
+  const handleBoxClickLocal = useCallback(
+    (index) => {
+      if (mode === "auto") {
+        handleBoxSelection(index);
+        return;
       }
+      if (!manualRunning || animLock || grid[index] !== "❓") return;
 
-      handleClick(index);
+      setAnimLock(true);
+      setOpeningIndex(index);
 
-      setLoopFx((prev) => {
-        const next = new Set(prev);
-        next.delete(index);
-        return next;
-      });
-    }, 280);
-  };
+      setShakingIndex(index);
+      setLoopFx((prev) => new Set([...prev, index]));
 
+      setTimeout(() => {
+        setShakingIndex(null);
+
+        if (audioRef.current) {
+          audioRef.current.currentTime = 0;
+          audioRef.current.play().catch(() => {});
+        }
+
+        handleClick(index);
+
+        setLoopFx((prev) => {
+          const next = new Set(prev);
+          next.delete(index);
+          return next;
+        });
+      }, 280);
+    },
+    [mode, handleBoxSelection, manualRunning, animLock, grid, handleClick]
+  );
+
+  // Which box should shake/highlight in auto mode
   const autoShakingIndex = useMemo(() => {
     if (
       mode !== "auto" ||
@@ -284,23 +271,17 @@ export default function Boxes({
     )
       return null;
 
-    const step = Math.min(
-      Math.max(0, currentBoxIndex || 0),
-      selectedBoxes.length - 1
-    );
+    const step = Math.min(Math.max(0, currentBoxIndex || 0), selectedBoxes.length - 1);
     return selectedBoxes[step] ?? null;
   }, [mode, gameActive, roundInProgress, selectedBoxes, currentBoxIndex]);
 
+  // Detect cells that changed from ? -> revealed to trigger FX once
   useEffect(() => {
     const prev = prevGridRef.current || [];
     if (grid && prev && grid.length === prev.length) {
       const toBlast = [];
       for (let i = 0; i < grid.length; i++) {
-        if (
-          prev[i] === "❓" &&
-          grid[i] !== "❓" &&
-          !playedRevealRef.current.has(i)
-        ) {
+        if (prev[i] === "❓" && grid[i] !== "❓" && !playedRevealRef.current.has(i)) {
           toBlast.push(i);
         }
       }
@@ -315,7 +296,6 @@ export default function Boxes({
           toBlast.forEach((i) => next.delete(i));
           return next;
         });
-
         toBlast.forEach((i) => playedRevealRef.current.add(i));
       }
     }
@@ -344,51 +324,43 @@ export default function Boxes({
             const isRevealed = revealAll || grid[index] !== "❓";
 
             // Disable when:
-            // - manual: not running / revealed / lock
-            // - auto: gameActive animLock
+            // - manual: not running / revealed / lock (unless this is the opening tile)
+            // - auto: selection allowed only when not gameActive & not anim lock
             const isDisabled =
-              (mode === "manual" &&
-                (!manualRunning ||
-                  isRevealed ||
-                  (animLock && openingIndex !== index) ||
-                  (shakingIndex !== null && shakingIndex !== index))) ||
+              (mode === "manual" && (
+                !manualRunning ||
+                isRevealed ||
+                (animLock && openingIndex !== index) ||
+                (shakingIndex !== null && shakingIndex !== index)
+              )) ||
               (mode === "auto" && (gameActive || animLock));
 
             const isSelected = mode === "auto" && selectedBoxes.includes(index);
-            const isShaking =
-              shakingIndex === index || autoShakingIndex === index;
+            const isShaking = shakingIndex === index || autoShakingIndex === index;
             const order = isSelected ? selectedBoxes.indexOf(index) + 1 : null;
 
             const loopActive = !isRevealed && (isShaking || loopFx.has(index));
             const revealActive = revealFx.has(index);
 
             return (
-              <motion.div
+              <motion.button
                 key={index}
+                type="button"
                 onClick={() => !isDisabled && handleBoxClickLocal(index)}
-                className={`relative flex items-center justify-center cursor-pointer transform-gpu will-change-transform ${
+                className={`relative flex items-center justify-center cursor-pointer transform-gpu will-change-transform rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-yellow-400 ${
                   isDisabled ? "pointer-events-none" : ""
                 }`}
+                aria-label={`Grid box ${index + 1}`}
                 animate={
                   isShaking
-                    ? {
-                        x: [0, -6, 6, -4, 4, 0],
-                        rotate: [0, -4, 4, -3, 3, 0],
-                        scale: [1, 1.03, 0.995, 1],
-                      }
+                    ? { x: [0, -6, 6, -4, 4, 0], rotate: [0, -4, 4, -3, 3, 0], scale: [1, 1.03, 0.995, 1] }
                     : { x: 0, rotate: 0, scale: 1 }
                 }
                 transition={
                   isShaking
                     ? {
-                        duration:
-                          mode === "auto" && autoShakingIndex === index
-                            ? 0.5
-                            : 0.45,
-                        repeat:
-                          mode === "auto" && autoShakingIndex === index
-                            ? Infinity
-                            : 0,
+                        duration: mode === "auto" && autoShakingIndex === index ? 0.5 : 0.45,
+                        repeat: mode === "auto" && autoShakingIndex === index ? Infinity : 0,
                         repeatType: "loop",
                         ease: [0.22, 0.61, 0.36, 1],
                       }
@@ -396,12 +368,7 @@ export default function Boxes({
                 }
               >
                 {/* Base box */}
-                <NextImage
-                  src="/box.png"
-                  alt="Box"
-                  fill
-                  className="object-contain select-none pointer-events-none transform-gpu will-change-transform"
-                />
+                <NextImage src="/box.png" alt="Box" fill className="object-contain select-none pointer-events-none transform-gpu will-change-transform" />
 
                 {/* Auto selection order */}
                 {order && (
@@ -416,21 +383,9 @@ export default function Boxes({
                 {/* Revealed content */}
                 {isRevealed && cell !== "❓" && (
                   <div className="absolute w-3/4 h-3/4 transform-gpu will-change-transform">
-                    {cell === "🍎" && (
-                      <NextImage
-                        src="/apple.png"
-                        alt="Apple"
-                        fill
-                        className="object-contain"
-                      />
-                    )}
+                    {cell === "🍎" && <NextImage src="/apple.png" alt="Apple" fill className="object-contain" />}
                     {(cell === "💣" || cell === "🐛" || cell === "🪱") && (
-                      <NextImage
-                        src="/worm.png"
-                        alt="Worm"
-                        fill
-                        className="object-contain"
-                      />
+                      <NextImage src="/worm.png" alt="Worm" fill className="object-contain" />
                     )}
                   </div>
                 )}
@@ -450,7 +405,7 @@ export default function Boxes({
                     }
                   }}
                 />
-              </motion.div>
+              </motion.button>
             );
           })}
         </div>
@@ -466,12 +421,7 @@ export default function Boxes({
               className="absolute inset-0 z-50 flex items-center justify-center bg-black/50"
             >
               <div className="relative w-64 h-64 flex items-center justify-center">
-                <NextImage
-                  src="/win.png"
-                  alt="Result"
-                  fill
-                  className="object-contain"
-                />
+                <NextImage src="/win.png" alt="Result" fill className="object-contain" />
                 <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
                   <motion.div
                     initial={{ y: 8, opacity: 0 }}
@@ -502,6 +452,8 @@ export default function Boxes({
           )}
         </AnimatePresence>
       </div>
+
+      {/* SFX element (kept at end for iOS focus) */}
       <audio ref={audioRef} src={OPEN_TILE_SRC} preload="auto" />
     </div>
   );
