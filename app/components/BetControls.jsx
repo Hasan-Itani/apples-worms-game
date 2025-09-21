@@ -52,33 +52,18 @@ export default function BetControls({
       ref.current.play().catch(() => {});
     }
   };
+
   const stepBet = (dir) =>
-    setBet(
-      (prev) =>
-        betSteps[
-          Math.max(
-            0,
-            Math.min(
-              betSteps.length - 1,
-              nearestStepIndex(betSteps, prev) + dir
-            )
-          )
-        ]
-    );
+    setBet((prev) => {
+      const idx = nearestStepIndex(betSteps, prev) + dir;
+      return betSteps[Math.max(0, Math.min(betSteps.length - 1, idx))];
+    });
 
   const stepRounds = (dir) =>
-    setRounds(
-      (prev) =>
-        roundSteps[
-          Math.max(
-            0,
-            Math.min(
-              roundSteps.length - 1,
-              nearestStepIndex(roundSteps, prev) + dir
-            )
-          )
-        ]
-    );
+    setRounds((prev) => {
+      const idx = nearestStepIndex(roundSteps, prev) + dir;
+      return roundSteps[Math.max(0, Math.min(roundSteps.length - 1, idx))];
+    });
 
   const formatMoney = (v) =>
     new Intl.NumberFormat("en-US", {
@@ -113,216 +98,212 @@ export default function BetControls({
   const canIncrement = bankIndex < Math.max(0, availableBankOptions.length - 1);
   const canDecrement = bankIndex > 0;
 
+  // Reusable “control row” shell
+  const Row = ({ children }) => (
+    <div className="flex items-center w-full h-12 sm:h-10 bg-black/90 rounded-xl overflow-hidden">
+      {children}
+    </div>
+  );
+
+  const LabelBlock = ({ label, children }) => (
+    <div className="flex-1 text-white text-center rounded-lg">
+      <p className="mt-2 text-[10px] sm:text-xs leading-none">{label}</p>
+      <div className="mb-1 text-base sm:text-lg font-bold">{children}</div>
+    </div>
+  );
+
   return (
-    <div className="p-2  bg-[url('/stats.png')] bg-cover bg-center rounded-2xl shadow-md flex flex-col justify-between">
-      <div className="flex gap-8">
+    <div className="p-3 sm:p-4 bg-[url('/stats.png')] bg-cover bg-center rounded-2xl shadow-md w-full min-w-0">
+      {/* 2-column on md+, single column on small screens */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
         {/* LEFT SIDE */}
-        <div className="flex flex-col gap-6 flex-1">
+        <div className="flex flex-col gap-3 sm:gap-4 min-w-0">
           {/* Bet */}
-          <div>
-            <div className="flex w-[160px] h-[40px] mt-3 items-center bg-black rounded-xl">
-              <IncDecButton
-                onPointerDown={() => {
-                  startHold(() => stepBet(-1));
-                  playSound(betAudioRef);
-                }}
-                onPointerUp={stopHold}
-                onPointerLeave={stopHold}
-                disabled={disabled}
-              >
-                −
-              </IncDecButton>
-              <div className="flex-1 text-white text-center text-lg font-bold rounded-lg shadow-inner">
-                <p className="text-[11px] mt-3">Bet Amount</p>
-                <p className="mb-2">€{formatMoney(bet)}</p>
-              </div>
-              <IncDecButton
-                onPointerDown={() => {
-                  startHold(() => stepBet(1));
-                  playSound(betAudioRef);
-                }}
-                onPointerUp={stopHold}
-                onPointerLeave={stopHold}
-                disabled={disabled}
-              >
-                +
-              </IncDecButton>
-            </div>
-          </div>
+          <Row>
+            <IncDecButton
+              onPointerDown={() => {
+                startHold(() => stepBet(-1));
+                playSound(betAudioRef);
+              }}
+              onPointerUp={stopHold}
+              onPointerLeave={stopHold}
+              disabled={disabled}
+            >
+              −
+            </IncDecButton>
+            <LabelBlock label="Bet Amount">€{formatMoney(bet)}</LabelBlock>
+            <IncDecButton
+              onPointerDown={() => {
+                startHold(() => stepBet(1));
+                playSound(betAudioRef);
+              }}
+              onPointerUp={stopHold}
+              onPointerLeave={stopHold}
+              disabled={disabled}
+            >
+              +
+            </IncDecButton>
+          </Row>
 
           {/* Worms */}
-          <div>
-            <div className="flex w-[160px] h-[40px] mt-3 items-center bg-black rounded-xl">
-              <IncDecButton
-                onPointerDown={() => {
-                  startHold(() => setWorms((prev) => Math.max(minWorms, prev - 1)));
-                  playSound(betAudioRef);
-                }}
-                onPointerUp={stopHold}
-                onPointerLeave={stopHold}
-                disabled={disabled}
-              >
-                −
-              </IncDecButton>
-              <div className="flex-1 text-white text-center text-lg font-bold rounded-lg shadow-inner">
-                <p className="text-[11px] mt-3">Worms</p>
-                <p className="mb-2">{worms}</p>
-              </div>
-              <IncDecButton
-                onPointerDown={() => {
-                  startHold(() => setWorms((prev) => Math.max(minWorms, prev + 1)));
-                  playSound(betAudioRef);
-                }}
-                onPointerUp={stopHold}
-                onPointerLeave={stopHold}
-                disabled={disabled}
-              >
-                +
-              </IncDecButton>
-            </div>
-          </div>
+          <Row>
+            <IncDecButton
+              onPointerDown={() => {
+                startHold(() =>
+                  setWorms((prev) => Math.max(minWorms, prev - 1))
+                );
+                playSound(betAudioRef);
+              }}
+              onPointerUp={stopHold}
+              onPointerLeave={stopHold}
+              disabled={disabled}
+            >
+              −
+            </IncDecButton>
+            <LabelBlock label="Worms">{worms}</LabelBlock>
+            <IncDecButton
+              onPointerDown={() => {
+                startHold(() =>
+                  setWorms((prev) => Math.min(maxWorms, prev + 1))
+                );
+                playSound(betAudioRef);
+              }}
+              onPointerUp={stopHold}
+              onPointerLeave={stopHold}
+              disabled={disabled}
+            >
+              +
+            </IncDecButton>
+          </Row>
 
-          {/* Balance */}
-          <div>
-            <div className="flex w-[160px] h-[40px] mt-3 items-center bg-black rounded-xl">
-              <div className="flex-1 text-white text-center text-lg font-bold rounded-lg shadow-inner">
-                <p className="text-[11px] text-white mt-3">Balance</p>
-                <p className="mb-2 text-white">€{balance.toFixed(2)}</p>
-              </div>
-            </div>
-            <div className="text-xs text-white mt-1">
+          {/* Balance / Max Win */}
+          <div className="space-y-1">
+            <Row>
+              <LabelBlock label="Balance">€{balance.toFixed(2)}</LabelBlock>
+            </Row>
+            <div className="text-xs text-white/90 text-center">
               Max Win: €{maxWin.toFixed(2)}
             </div>
           </div>
         </div>
 
         {/* RIGHT SIDE */}
-        <div className="flex flex-col gap-6 flex-1">
-          {/* Bank It / Auto Rounds */}
+        <div className="flex flex-col gap-3 sm:gap-4 min-w-0">
+          {/* Bank It (manual) / Rounds (auto) */}
           {mode === "manual" ? (
-            <div>
-              <div className="flex w-[190px] h-[40px] mt-3 items-center bg-black rounded-xl">
-                <IncDecButton
-                  disabled={!canDecrement || openedApples === 0}
-                  onClick={() => {
-                    selectBank(bankIndex - 1);
-                    playSound(betAudioRef);
-                  }}
-                >
-                  −
-                </IncDecButton>
-                <div className="flex-1 text-white text-center text-lg font-bold rounded-lg shadow-inner">
-                  <p className="text-[11px] mt-3">Bank it</p>
-                  {availableBankOptions.length > 0
-                    ? availableBankOptions[bankIndex]
-                    : "0.00"}
-                </div>
-                <IncDecButton
-                  disabled={!canIncrement || openedApples === 0}
-                  onClick={() => {
-                    selectBank(bankIndex + 1);
-                    playSound(betAudioRef);
-                  }}
-                >
-                  +
-                </IncDecButton>
-              </div>
-            </div>
+            <Row>
+              <IncDecButton
+                disabled={!canDecrement || openedApples === 0}
+                onClick={() => {
+                  selectBank(bankIndex - 1);
+                  playSound(betAudioRef);
+                }}
+              >
+                −
+              </IncDecButton>
+              <LabelBlock label="Bank it">
+                {availableBankOptions.length > 0
+                  ? availableBankOptions[bankIndex]
+                  : "0.00"}
+              </LabelBlock>
+              <IncDecButton
+                disabled={!canIncrement || openedApples === 0}
+                onClick={() => {
+                  selectBank(bankIndex + 1);
+                  playSound(betAudioRef);
+                }}
+              >
+                +
+              </IncDecButton>
+            </Row>
           ) : (
-            <div>
-              <div className="flex w-[160px] h-[40px] mt-3 items-center bg-black rounded-xl">
-                <IncDecButton
-                  onClick={() => {
-                    stepRounds(-1);
-                    playSound(betAudioRef);
-                  }}
-                  disabled={disabled}
-                >
-                  −
-                </IncDecButton>
-                <div className="flex-1 text-white text-center text-lg font-bold rounded-lg shadow-inner">
-                  <p className="text-[11px] mt-3">Rounds</p>
-                  <p className="mb-2">{rounds}</p>
-                </div>
-                <IncDecButton onClick={() => {
+            <Row>
+              <IncDecButton
+                onClick={() => {
+                  stepRounds(-1);
+                  playSound(betAudioRef);
+                }}
+                disabled={disabled}
+              >
+                −
+              </IncDecButton>
+              <LabelBlock label="Rounds">{rounds}</LabelBlock>
+              <IncDecButton
+                onClick={() => {
                   stepRounds(1);
                   playSound(betAudioRef);
-                }} disabled={disabled}>
-                  +
-                </IncDecButton>
-              </div>
-            </div>
+                }}
+                disabled={disabled}
+              >
+                +
+              </IncDecButton>
+            </Row>
           )}
 
           {/* Mode */}
-          <div>
-            <div className="flex gap-2">
-              <button
-                onClick={() => {
-                  setMode("manual");
-                  playSound(modeAudioRef);
-                }}
-                disabled={disabled}
-                className={`flex-1 w-[160px] py-2 rounded-lg font-medium transition relative group`}
-              >
-                <div
-                  className={`absolute inset-0 rounded-lg bg-center bg-cover ${
-                    mode === "manual"
-                      ? "bg-[url('/mode.png')]"
-                      : "bg-[url('/button_nonactive.png')] group-hover:bg-[url('/mode.png')]"
-                  }`}
-                />
-                <span className="relative z-10 text-white font-bold">
-                  Manual
-                </span>
-              </button>
-              <button
-                onClick={() => {
-                  setMode("auto");
-                  playSound(modeAudioRef);
-                }}
-                disabled={disabled}
-                className={`flex-1 py-2 rounded-lg w-[20px] font-medium transition relative group`}
-              >
-                <div
-                  className={`absolute inset-0 rounded-lg bg-center bg-cover ${
-                    mode === "auto"
-                      ? "bg-[url('/mode.png')]"
-                      : "bg-[url('/button_nonactive.png')] group-hover:bg-[url('/mode.png')]"
-                  }`}
-                />
-                <span className="relative z-10 text-white font-bold">Auto</span>
-              </button>
-            </div>
+          <div className="flex gap-2">
+            <button
+              onClick={() => {
+                setMode("manual");
+                playSound(modeAudioRef);
+              }}
+              disabled={disabled}
+              className="flex-1 relative group h-12 sm:h-10 rounded-lg font-bold text-white"
+            >
+              <div
+                className={`absolute inset-0 rounded-lg bg-center bg-cover ${
+                  mode === "manual"
+                    ? "bg-[url('/mode.png')]"
+                    : "bg-[url('/button_nonactive.png')] group-hover:bg-[url('/mode.png')]"
+                }`}
+              />
+              <span className="relative z-10">Manual</span>
+            </button>
+            <button
+              onClick={() => {
+                setMode("auto");
+                playSound(modeAudioRef);
+              }}
+              disabled={disabled}
+              className="flex-1 relative group h-12 sm:h-10 rounded-lg font-bold text-white"
+            >
+              <div
+                className={`absolute inset-0 rounded-lg bg-center bg-cover ${
+                  mode === "auto"
+                    ? "bg-[url('/mode.png')]"
+                    : "bg-[url('/button_nonactive.png')] group-hover:bg-[url('/mode.png')]"
+                }`}
+              />
+              <span className="relative z-10">Auto</span>
+            </button>
           </div>
 
           {/* Grid Size */}
-          <div>
-            <div className="flex gap-2">
-              {[3, 4, 5].map((size) => (
-                <button
-                  key={size}
-                  onClick={() => {
-                    setGridSizeClamped(size);
-                    playSound(modeAudioRef);
-                  }}
-                  disabled={disabled}
-                  className={`flex-1 text-white text-bold-2xl py-2 rounded-lg font-medium border-0 transition bg-no-repeat bg-center bg-contain
-                    ${
-                      gridSize === size
-                        ? "bg-[url('/button_hovered.png')]"
-                        : "bg-[url('/button_unhovered.png')] hover:bg-[url('/button_hovered.png')]"
-                    }`}
-                >
-                  {size}x{size}
-                </button>
-              ))}
-            </div>
+          <div className="flex gap-2">
+            {[3, 4, 5].map((size) => (
+              <button
+                key={size}
+                onClick={() => {
+                  setGridSizeClamped(size);
+                  playSound(modeAudioRef);
+                }}
+                disabled={disabled}
+                className={`flex-1 py-2 h-12 sm:h-10 text-base sm:text-lg text-white font-semibold rounded-lg bg-no-repeat bg-center bg-contain
+                ${
+                  gridSize === size
+                    ? "bg-[url('/button_hovered.png')]"
+                    : "bg-[url('/button_unhovered.png')] hover:bg-[url('/button_hovered.png')]"
+                }`}
+              >
+                {size}x{size}
+              </button>
+            ))}
           </div>
         </div>
       </div>
-        <audio ref={modeAudioRef} src={MODE_SOUND} preload="auto" />
-        <audio ref={betAudioRef} src={BET_SOUND} preload="auto" />
+
+      <audio ref={modeAudioRef} src={MODE_SOUND} preload="auto" />
+      <audio ref={betAudioRef} src={BET_SOUND} preload="auto" />
     </div>
   );
 }
